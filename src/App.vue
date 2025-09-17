@@ -2,18 +2,24 @@
   <div id="app" :class="{ 'dark-mode': isDarkMode }">
     <!-- Authentication Pages (Full Screen) -->
     <template v-if="isAuthPage">
-      <Login
-        v-if="currentPage === 'Login'"
-        @switchToSignUp="setCurrentPage('SignUp')"
-        @loginSuccess="handleAuthSuccess"
-        @backToHome="setCurrentPage('Home')"
-      />
-      <SignUp
-        v-if="currentPage === 'SignUp'"
-        @switchToLogin="setCurrentPage('Login')"
-        @signUpSuccess="handleAuthSuccess"
-        @backToHome="setCurrentPage('Home')"
-      />
+      <transition name="slide" mode="out-in">
+        <div>
+          <Login
+            v-if="currentPage === 'Login'"
+            key="login"
+            @switchToSignUp="setCurrentPage('SignUp')"
+            @loginSuccess="handleAuthSuccess"
+            @backToHome="setCurrentPage('Home')"
+          />
+          <SignUp
+            v-if="currentPage === 'SignUp'"
+            key="signup"
+            @switchToLogin="setCurrentPage('Login')"
+            @signUpSuccess="handleAuthSuccess"
+            @backToHome="setCurrentPage('Home')"
+          />
+        </div>
+      </transition>
     </template>
 
     <!-- Main App Layout -->
@@ -83,11 +89,30 @@
       <AboutUs v-if="currentPage === 'About'" />
       <MenuPage v-if="currentPage === 'Menu'" :onAddToCart="addToCart" />
       <ContactUs v-if="currentPage === 'Contact'" />
-      <Promotions v-if="currentPage === 'Promotions'" @setCurrentPage="setCurrentPage" />
+      <Promotions v-if="currentPage === 'Promotions'" @setCurrentPage="setCurrentPage" :isLoggedIn="isLoggedIn" />
       <Profile v-if="currentPage === 'Profile'" @setCurrentPage="setCurrentPage" />
       <ProfileSettings v-if="currentPage === 'ProfileSettings'" @setCurrentPage="setCurrentPage" />
       <Settings v-if="currentPage === 'Settings'" @setCurrentPage="setCurrentPage" />
       <Cart v-if="currentPage === 'Cart'" @setCurrentPage="setCurrentPage" />
+
+      <!-- Sign Out Confirmation Modal -->
+      <div v-if="showSignOutModal" class="signout-modal-overlay" @click="cancelSignOut">
+        <div class="signout-modal" @click.stop>
+          <div class="signout-modal-header">
+            <h3>Sign Out</h3>
+            <button class="signout-close-btn" @click="cancelSignOut">✕</button>
+          </div>
+          <div class="signout-modal-body">
+            <div class="signout-icon">🚪</div>
+            <p class="signout-message">Are you sure you want to sign out?</p>
+            <p class="signout-submessage">You will be redirected to the home page.</p>
+          </div>
+          <div class="signout-modal-footer">
+            <button class="signout-btn cancel-btn" @click="cancelSignOut">Cancel</button>
+            <button class="signout-btn confirm-btn" @click="confirmSignOut">Sign Out</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Footer Section -->
       <footer class="footer" v-if="!isProfilePage">
@@ -249,7 +274,8 @@ export default {
       isDarkMode: false,
       subscriptionError: '',
       subscriptionSuccess: '',
-      isSubscribing: false
+      isSubscribing: false,
+      showSignOutModal: false
     }
   },
   computed: {
@@ -396,17 +422,62 @@ export default {
     },
     
     handleLogout() {
-      const confirmLogout = confirm('Are you sure you want to sign out?');
-      if (confirmLogout) {
-        this.currentUser = null;
-        localStorage.removeItem('ramyeon_user_session');
-        this.setCurrentPage('Home');
-        
-        // Show logout message
+      this.showSignOutModal = true;
+    },
+
+    confirmSignOut() {
+      this.currentUser = null;
+      localStorage.removeItem('ramyeon_user_session');
+      this.setCurrentPage('Home');
+      this.showSignOutModal = false;
+
+      // Show success notification
+      this.showSignOutSuccess();
+    },
+
+    cancelSignOut() {
+      this.showSignOutModal = false;
+    },
+
+    showSignOutSuccess() {
+      const notification = document.createElement('div');
+      notification.innerHTML = `
+        <div style="
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #28a745;
+          color: white;
+          padding: 15px 20px;
+          border-radius: 10px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+          z-index: 9999;
+          font-family: 'Poppins', sans-serif;
+          font-weight: 600;
+          animation: slideIn 0.3s ease-out;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        ">
+          <span>✅</span>
+          <span>You have been signed out successfully!</span>
+        </div>
+        <style>
+          @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+        </style>
+      `;
+
+      document.body.appendChild(notification);
+
+      setTimeout(() => {
+        notification.style.animation = 'slideIn 0.3s ease-out reverse';
         setTimeout(() => {
-          alert('You have been signed out successfully!');
-        }, 500);
-      }
+          document.body.removeChild(notification);
+        }, 300);
+      }, 3000);
     },
     
     loadDarkModePreference() {
@@ -1530,6 +1601,32 @@ html, body {
   }
 }
 
+/* Slide transitions for auth pages */
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.slide-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.slide-enter-to {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.slide-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.slide-leave-to {
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
 /* Additional animations and effects */
 @keyframes fadeInUp {
   from {
@@ -1550,4 +1647,198 @@ html, body {
 .footer-main > div:nth-child(2) { animation-delay: 0.2s; }
 .footer-main > div:nth-child(3) { animation-delay: 0.3s; }
 .footer-main > div:nth-child(4) { animation-delay: 0.4s; }
+
+/* Sign Out Modal Styles */
+.signout-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(5px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.signout-modal {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 400px;
+  width: 90%;
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.signout-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+}
+
+.signout-modal-header h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.signout-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.2rem;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.signout-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.signout-modal-body {
+  padding: 30px 25px;
+  text-align: center;
+}
+
+.signout-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.signout-message {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.signout-submessage {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+}
+
+.signout-modal-footer {
+  display: flex;
+  gap: 15px;
+  padding: 20px 25px;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+}
+
+.signout-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: linear-gradient(135deg, #ff3742, #ff2f3a);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.3);
+}
+
+.confirm-btn:active,
+.cancel-btn:active {
+  transform: translateY(0);
+}
+
+/* Dark mode support for modal */
+.dark-mode .signout-modal {
+  background: #2d2d2d;
+  color: #f5f5f5;
+}
+
+.dark-mode .signout-modal-footer {
+  background: #3a3a3a;
+  border-top-color: #4a4a4a;
+}
+
+.dark-mode .signout-message {
+  color: #f5f5f5;
+}
+
+.dark-mode .signout-submessage {
+  color: #b8b8b8;
+}
+
+/* Modal animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Responsive modal */
+@media (max-width: 480px) {
+  .signout-modal {
+    margin: 20px;
+    width: calc(100% - 40px);
+  }
+
+  .signout-modal-header {
+    padding: 15px 20px;
+  }
+
+  .signout-modal-body {
+    padding: 25px 20px;
+  }
+
+  .signout-modal-footer {
+    padding: 15px 20px;
+    flex-direction: column;
+  }
+
+  .signout-btn {
+    width: 100%;
+  }
+}
 </style>
