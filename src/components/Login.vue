@@ -339,4 +339,4 @@ export default {
 }
 </script>
 
-<style src="./Auth.css" scoped></style>
+<style scoped src="./AuthStyles.css"></style>

@@ -401,4 +401,4 @@ export default {
 }
 </script>
 
-<style src="./Auth.css" scoped></style>
+<style src="./AuthStyles.css"></style>

@@ -1,0 +1,353 @@
+/* Auth Styles using Tailwind CSS */
+
+/* Auth Container */
+.auth-container {
+  @apply flex min-h-screen font-sans relative overflow-hidden;
+  background: linear-gradient(to bottom right, #ef4444, #fb923c, #eab308);
+}
+
+.auth-container::before {
+  content: '';
+  @apply absolute inset-0 animate-pulse;
+  background: linear-gradient(to bottom right, rgba(220, 38, 38, 0.2), rgba(249, 115, 22, 0.2));
+}
+
+/* Auth Card */
+.auth-card {
+  @apply bg-white/95 backdrop-blur-sm rounded-3xl p-10 w-full max-w-md mx-auto shadow-2xl relative transform transition-all duration-500 hover:shadow-3xl hover:scale-105;
+}
+
+/* Auth Logo */
+.auth-logo {
+  @apply w-24 h-24 mx-auto mb-6 block animate-bounce;
+}
+
+/* Auth Title */
+.auth-title {
+  @apply text-5xl font-extrabold text-gray-800 text-center mb-3 bg-gradient-to-r from-red-500 to-orange-400 bg-clip-text text-transparent;
+}
+
+/* Auth Subtitle */
+.auth-subtitle {
+  @apply text-center text-gray-600 mb-8 text-lg;
+}
+
+/* Create Link */
+.create-link {
+  @apply text-red-400 no-underline font-bold hover:underline transition-colors duration-300;
+}
+
+/* Error Message */
+.error-message {
+  @apply bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-center border border-red-200;
+}
+
+/* Success Message */
+.success-message {
+  @apply bg-green-50 text-green-600 p-3 rounded-lg mb-5 text-center border border-green-200;
+}
+
+/* Auth Form */
+.auth-form {
+  @apply mb-8;
+}
+
+/* Form Row */
+.form-row {
+  @apply flex gap-4 mb-5;
+}
+
+/* Half Width */
+.half-width {
+  @apply flex-1;
+}
+
+/* Form Group */
+.form-group {
+  @apply mb-5;
+}
+
+/* Form Label */
+.form-label {
+  @apply block mb-1 text-gray-800 font-semibold text-sm;
+}
+
+/* Form Input */
+.form-input {
+  @apply w-full p-4 border-2 border-gray-200 rounded-2xl text-base transition-all duration-300 box-border bg-gray-50 hover:bg-white hover:border-gray-300;
+}
+
+.form-input:focus {
+  @apply outline-none border-red-400 shadow-xl bg-white transform scale-105 ring-4 ring-red-100;
+}
+
+.form-input.error {
+  @apply border-red-500 bg-red-50 ring-4 ring-red-50;
+}
+
+.form-input.success {
+  @apply border-green-500 bg-green-50 ring-4 ring-green-50;
+}
+
+/* Field Error */
+.field-error {
+  @apply text-red-500 text-xs mt-1 block;
+}
+
+/* Password Toggle */
+.password-toggle {
+  @apply absolute right-4 top-1/2 transform -translate-y-1/2 bg-none border-none cursor-pointer text-xl text-gray-600;
+}
+
+/* Checkbox Group */
+.checkbox-group {
+  @apply flex items-start gap-3 mb-5 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors duration-300;
+}
+
+.checkbox-group input[type="checkbox"] {
+  @apply mt-1 w-5 h-5 accent-red-500;
+}
+
+.checkbox-group label {
+  @apply text-sm text-gray-700 leading-relaxed;
+}
+
+.checkbox-group a {
+  @apply text-red-400 no-underline hover:underline;
+}
+
+/* Forgot Password */
+.forgot-password {
+  @apply text-right;
+}
+
+.forgot-password a {
+  @apply text-red-400 no-underline text-sm hover:underline;
+}
+
+/* Auth Button */
+.auth-button {
+  @apply w-full bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 text-white border-none py-5 rounded-2xl text-xl font-bold cursor-pointer transition-all duration-300 uppercase tracking-wide mb-5 shadow-xl hover:shadow-2xl;
+}
+
+.auth-button:hover:not(:disabled) {
+  @apply from-red-600 via-orange-500 to-yellow-500 transform -translate-y-2 shadow-2xl scale-105;
+}
+
+.auth-button:active:not(:disabled) {
+  @apply transform translate-y-0 scale-100;
+}
+
+.auth-button:disabled {
+  @apply opacity-50 cursor-not-allowed transform-none bg-gray-400;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  @apply inline-block w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin mr-3;
+}
+
+/* Auth Divider */
+.auth-divider {
+  @apply text-center my-8 relative text-gray-600 font-bold;
+}
+
+.auth-divider::before {
+  @apply content-[''] absolute top-1/2 left-0 right-0 h-px bg-gray-200;
+}
+
+.auth-divider::after {
+  @apply content-[''] absolute top-1/2 left-1/2 transform -translate-x-1/2 bg-white px-4;
+}
+
+/* Social Login */
+.social-login {
+  @apply flex flex-col gap-3;
+}
+
+/* Social Button */
+.social-btn {
+  @apply flex items-center justify-center gap-4 p-4 border-2 border-gray-200 rounded-2xl bg-white cursor-pointer transition-all duration-300 text-lg font-medium no-underline text-gray-800 shadow-lg hover:shadow-xl;
+}
+
+.social-btn:hover:not(:disabled) {
+  @apply border-gray-300 bg-gray-50 transform -translate-y-2 scale-105;
+}
+
+.social-btn:active:not(:disabled) {
+  @apply transform translate-y-0 scale-100;
+}
+
+.social-btn img {
+  @apply w-5 h-5;
+}
+
+/* Google Button */
+.google-btn:hover:not(:disabled) {
+  @apply bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200;
+}
+
+/* Facebook Button */
+.facebook-btn:hover:not(:disabled) {
+  @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-blue-200;
+}
+
+/* Test Account Info */
+.test-account-info {
+  @apply bg-gray-50 border border-gray-200 rounded-lg p-4 my-5 text-sm text-gray-700;
+}
+
+.test-account-info p {
+  @apply my-1;
+}
+
+.test-account-info strong {
+  @apply text-gray-800;
+}
+
+/* Back to Home Button */
+.back-home-btn {
+  @apply bg-gradient-to-r from-gray-600 to-gray-700 text-white border-none py-3 px-6 rounded-2xl text-sm font-semibold cursor-pointer transition-all duration-300 uppercase tracking-wide mt-5 flex items-center justify-center gap-2 shadow-lg;
+}
+
+.back-home-btn:hover {
+  @apply from-gray-700 to-gray-800 transform -translate-y-1 shadow-xl;
+}
+
+.back-home-btn:active {
+  @apply transform translate-y-0;
+}
+
+/* Promo Content */
+.promo-content {
+  @apply flex-1 flex flex-col justify-center items-center p-10 text-white relative;
+}
+
+/* Promo Image */
+.promo-image {
+  @apply mb-8;
+}
+
+/* Ramyeon Image */
+.ramyeon-image {
+  @apply w-full max-w-sm h-auto rounded-3xl shadow-2xl animate-pulse;
+}
+
+/* Promo Text */
+.promo-text {
+  @apply text-center max-w-md;
+}
+
+.promo-text h2 {
+  @apply text-lg font-bold mb-3 opacity-90;
+}
+
+.promo-text h1 {
+  @apply text-6xl font-black mb-4 drop-shadow-2xl bg-gradient-to-r from-yellow-300 to-yellow-500 bg-clip-text text-transparent;
+}
+
+.promo-text p {
+  @apply text-xl mb-3 opacity-90;
+}
+
+.promo-text h3 {
+  @apply text-4xl font-bold mb-4 text-yellow-400;
+}
+
+.bonus-text {
+  @apply text-sm mb-8 opacity-80;
+}
+
+.order-btn {
+  @apply bg-white text-red-500 border-none py-5 px-10 rounded-full text-xl font-bold cursor-pointer transition-all duration-300 uppercase tracking-wide shadow-2xl hover:bg-gray-100 transform hover:-translate-y-2 hover:scale-110;
+}
+
+/* Custom animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-card {
+  animation: float 6s ease-in-out infinite;
+}
+
+.ramyeon-image {
+  animation: float 4s ease-in-out infinite;
+}
+
+.form-group {
+  animation: slideIn 0.6s ease-out;
+}
+
+.form-group:nth-child(1) { animation-delay: 0.1s; }
+.form-group:nth-child(2) { animation-delay: 0.2s; }
+.form-group:nth-child(3) { animation-delay: 0.3s; }
+.form-group:nth-child(4) { animation-delay: 0.4s; }
+.form-group:nth-child(5) { animation-delay: 0.5s; }
+
+/* Enhanced checkbox styling */
+.checkbox-group {
+  @apply flex items-start gap-3 mb-5 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors duration-300;
+}
+
+.checkbox-group input[type="checkbox"] {
+  @apply mt-1 w-5 h-5 accent-red-500;
+}
+
+/* Responsive enhancements */
+@media (max-width: 768px) {
+  .auth-container {
+    @apply flex-col p-6;
+  }
+
+  .auth-card {
+    @apply max-w-full p-8;
+  }
+
+  .promo-content {
+    @apply hidden;
+  }
+
+  .auth-title {
+    @apply text-4xl;
+  }
+
+  .form-row {
+    @apply flex-col gap-0;
+  }
+
+  .half-width {
+    @apply flex-none;
+  }
+}
+
+/* Loading animation enhancement */
+.loading-spinner {
+  @apply inline-block w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin mr-3;
+}
+
+/* Error and success message animations */
+.error-message, .success-message {
+  animation: slideIn 0.5s ease-out;
+}
+
+/* Button press effect */
+.auth-button:active {
+  @apply scale-95;
+}
+
+.social-btn:active {
+  @apply scale-95;
+}
