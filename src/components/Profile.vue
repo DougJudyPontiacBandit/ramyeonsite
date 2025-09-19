@@ -53,13 +53,27 @@
         <!-- QR Code Section -->
         <div class="qr-section">
           <h3 class="qr-title">Scan for Points</h3>
-          <QRCode 
+          <QRCode
             :code="user.pointsQRCode || generatePointsQRCode()"
             title=""
             subtitle=""
             :instructions="'Show this QR code when making a purchase to earn points'"
             size="medium"
           />
+        </div>
+
+        <!-- Settings Section -->
+        <div class="settings-section">
+          <h3 class="settings-title">Account & App Settings</h3>
+          <p class="settings-description">Manage your profile information and app preferences</p>
+          <div class="settings-buttons">
+            <button class="settings-btn profile-settings-btn" @click="$emit('setCurrentPage', 'ProfileSettings')">
+              👤 Profile Settings
+            </button>
+            <button class="settings-btn app-settings-btn" @click="$emit('setCurrentPage', 'Settings')">
+              ⚙️ App Settings
+            </button>
+          </div>
         </div>
       </div>
     </div>
