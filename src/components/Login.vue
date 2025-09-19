@@ -1,7 +1,7 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
-      <img src="../assets/Nav Bar/Logo.png" alt="Ramyeon Corner Logo" class="auth-logo" />
+      <img :src="logoSrc" alt="Ramyeon Corner Logo" class="auth-logo" />
       
       <h1 class="auth-title">Sign In</h1>
       <p class="auth-subtitle">Don't have an account? <a href="#" @click.prevent="$emit('switchToSignUp')" class="create-link">Create now</a></p>
@@ -125,7 +125,8 @@ export default {
       errorMessage: '',
       successMessage: '',
       isLoading: false,
-      showPassword: false
+      showPassword: false,
+      logoSrc: require('../assets/Nav Bar/Logo.png')
     }
   },
   methods: {

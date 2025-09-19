@@ -1,30 +1,299 @@
+/* Custom styles for auth components using Tailwind utilities */
+
+/* Auth Container */
+.auth-container {
+  @apply flex min-h-screen bg-gradient-to-br from-red-500 via-orange-400 to-yellow-400 font-sans relative overflow-hidden;
+}
+
+.auth-container::before {
+  @apply content-[''] absolute inset-0 bg-gradient-to-br from-red-600/20 to-orange-500/20 animate-pulse;
+}
+
+/* Auth Card */
+.auth-card {
+  @apply bg-white/95 backdrop-blur-sm rounded-3xl p-10 w-full max-w-md mx-auto shadow-2xl relative transform transition-all duration-500 hover:shadow-3xl hover:scale-105;
+}
+
+/* Auth Logo */
+.auth-logo {
+  @apply w-20 h-20 mx-auto mb-5 block;
+}
+
+/* Auth Title */
+.auth-title {
+  @apply text-4xl font-bold text-gray-800 text-center mb-2;
+}
+
+/* Auth Subtitle */
+.auth-subtitle {
+  @apply text-center text-gray-600 mb-8 text-base;
+}
+
+/* Create Link */
+.create-link {
+  @apply text-red-400 no-underline font-bold hover:underline;
+}
+
+/* Error Message */
+.error-message {
+  @apply bg-red-50 text-red-600 p-3 rounded-lg mb-5 text-center border border-red-200;
+}
+
+/* Success Message */
+.success-message {
+  @apply bg-green-50 text-green-600 p-3 rounded-lg mb-5 text-center border border-green-200;
+}
+
+/* Auth Form */
+.auth-form {
+  @apply mb-8;
+}
+
+/* Form Row */
+.form-row {
+  @apply flex gap-4 mb-5;
+}
+
+/* Half Width */
+.half-width {
+  @apply flex-1;
+}
+
+/* Form Group */
+.form-group {
+  @apply mb-5;
+}
+
+/* Form Label */
+.form-label {
+  @apply block mb-1 text-gray-800 font-semibold text-sm;
+}
+
+/* Form Input */
+.form-input {
+  @apply w-full p-3 border-2 border-gray-200 rounded-xl text-base transition-all duration-300 box-border bg-gray-50 hover:bg-white hover:border-gray-300;
+}
+
+.form-input:focus {
+  @apply outline-none border-red-400 shadow-lg bg-white transform scale-105;
+}
+
+.form-input.error {
+  @apply border-red-500 bg-red-50;
+}
+
+.form-input.success {
+  @apply border-green-500 bg-green-50;
+}
+
+/* Field Error */
+.field-error {
+  @apply text-red-500 text-xs mt-1 block;
+}
+
+/* Password Toggle */
+.password-toggle {
+  @apply absolute right-4 top-1/2 transform -translate-y-1/2 bg-none border-none cursor-pointer text-xl text-gray-600;
+}
+
+/* Checkbox Group */
+.checkbox-group {
+  @apply flex items-start gap-3 mb-5;
+}
+
+.checkbox-group input[type="checkbox"] {
+  @apply mt-1 w-4 h-4;
+}
+
+.checkbox-group label {
+  @apply text-sm text-gray-700 leading-relaxed;
+}
+
+.checkbox-group a {
+  @apply text-red-400 no-underline hover:underline;
+}
+
+/* Forgot Password */
+.forgot-password {
+  @apply text-right;
+}
+
+.forgot-password a {
+  @apply text-red-400 no-underline text-sm hover:underline;
+}
+
+/* Auth Button */
+.auth-button {
+  @apply w-full bg-gradient-to-r from-red-500 via-orange-400 to-yellow-400 text-white border-none py-4 rounded-xl text-lg font-bold cursor-pointer transition-all duration-300 uppercase tracking-wide mb-5 shadow-lg hover:shadow-xl;
+}
+
+.auth-button:hover:not(:disabled) {
+  @apply from-red-600 via-orange-500 to-yellow-500 transform -translate-y-1 shadow-2xl scale-105;
+}
+
+.auth-button:active:not(:disabled) {
+  @apply transform translate-y-0 scale-100;
+}
+
+.auth-button:disabled {
+  @apply opacity-50 cursor-not-allowed transform-none bg-gray-400;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  @apply inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-3;
+}
+
+/* Auth Divider */
+.auth-divider {
+  @apply text-center my-8 relative text-gray-600 font-bold;
+}
+
+.auth-divider::before {
+  @apply content-[''] absolute top-1/2 left-0 right-0 h-px bg-gray-200;
+}
+
+.auth-divider::after {
+  @apply content-[''] absolute top-1/2 left-1/2 transform -translate-x-1/2 bg-white px-4;
+}
+
+/* Social Login */
+.social-login {
+  @apply flex flex-col gap-3;
+}
+
+/* Social Button */
+.social-btn {
+  @apply flex items-center justify-center gap-3 p-3 border-2 border-gray-200 rounded-xl bg-white cursor-pointer transition-all duration-300 text-base font-medium no-underline text-gray-800 shadow-md hover:shadow-lg;
+}
+
+.social-btn:hover:not(:disabled) {
+  @apply border-gray-300 bg-gray-50 transform -translate-y-1 scale-105;
+}
+
+.social-btn:active:not(:disabled) {
+  @apply transform translate-y-0 scale-100;
+}
+
+.social-btn img {
+  @apply w-5 h-5;
+}
+
+/* Google Button */
+.google-btn {
+  @apply border-red-500 text-red-500;
+}
+
+.google-btn:hover:not(:disabled) {
+  @apply bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200;
+}
+
+/* Facebook Button */
+.facebook-btn {
+  @apply border-blue-600 text-blue-600;
+}
+
+.facebook-btn:hover:not(:disabled) {
+  @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-blue-200;
+}
+
+/* Test Account Info */
+.test-account-info {
+  @apply bg-gray-50 border border-gray-200 rounded-lg p-4 my-5 text-sm text-gray-700;
+}
+
+.test-account-info p {
+  @apply my-1;
+}
+
+.test-account-info strong {
+  @apply text-gray-800;
+}
+
 /* Back to Home Button */
 .back-home-btn {
-  background: linear-gradient(135deg, #6c757d, #495057);
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 15px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-top: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(108, 117, 125, 0.2);
+  @apply bg-gradient-to-r from-gray-600 to-gray-700 text-white border-none py-3 px-6 rounded-2xl text-sm font-semibold cursor-pointer transition-all duration-300 uppercase tracking-wide mt-5 flex items-center justify-center gap-2 shadow-lg;
 }
 
 .back-home-btn:hover {
-  background: linear-gradient(135deg, #5a6268, #343a40);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.3);
+  @apply from-gray-700 to-gray-800 transform -translate-y-1 shadow-xl;
 }
 
 .back-home-btn:active {
-  transform: translateY(0);
+  @apply transform translate-y-0;
+}
+
+/* Promo Content */
+.promo-content {
+  @apply flex-1 flex flex-col justify-center items-center p-10 text-white relative;
+}
+
+/* Promo Image */
+.promo-image {
+  @apply mb-8;
+}
+
+/* Ramyeon Image */
+.ramyeon-image {
+  @apply w-full max-w-xs h-auto rounded-3xl shadow-2xl;
+}
+
+/* Promo Text */
+.promo-text {
+  @apply text-center max-w-md;
+}
+
+.promo-text h2 {
+  @apply text-lg font-bold mb-3 opacity-90;
+}
+
+.promo-text h1 {
+  @apply text-5xl font-bold mb-4 drop-shadow-lg;
+}
+
+.promo-text p {
+  @apply text-xl mb-3 opacity-90;
+}
+
+.promo-text h3 {
+  @apply text-4xl font-bold mb-4 text-yellow-400;
+}
+
+.bonus-text {
+  @apply text-sm mb-8 opacity-80;
+}
+
+.order-btn {
+  @apply bg-white text-red-400 border-none py-4 px-8 rounded-full text-lg font-bold cursor-pointer transition-all duration-300 uppercase tracking-wide shadow-xl;
+}
+
+.order-btn:hover {
+  @apply bg-gray-100 transform -translate-y-1 shadow-2xl;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .auth-container {
+    @apply flex-col p-5;
+  }
+
+  .auth-card {
+    @apply max-w-full p-8;
+  }
+
+  .promo-content {
+    @apply hidden;
+  }
+
+  .auth-title {
+    @apply text-3xl;
+  }
+
+  .form-row {
+    @apply flex-col gap-0;
+  }
+
+  .half-width {
+    @apply flex-none;
+  }
 }

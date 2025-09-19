@@ -1601,30 +1601,34 @@ html, body {
   }
 }
 
-/* Slide transitions for auth pages */
+/* Enhanced slide transitions for auth pages */
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.5s ease, opacity 0.5s ease;
+  transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .slide-enter-from {
   opacity: 0;
-  transform: translateX(100%);
+  transform: translateX(100%) rotateY(30deg) scale(0.9);
+  filter: blur(5px);
 }
 
 .slide-enter-to {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(0) rotateY(0deg) scale(1);
+  filter: blur(0px);
 }
 
 .slide-leave-from {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateX(0) rotateY(0deg) scale(1);
+  filter: blur(0px);
 }
 
 .slide-leave-to {
   opacity: 0;
-  transform: translateX(-100%);
+  transform: translateX(-100%) rotateY(-30deg) scale(0.9);
+  filter: blur(5px);
 }
 
 /* Additional animations and effects */
