@@ -1,10 +1,10 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
+  <div class="auth-container login-page">
+    <div class="auth-card" :class="{ 'slide-to-signup': isTransitioning }">
       <img :src="logoSrc" alt="Ramyeon Corner Logo" class="auth-logo" />
       
       <h1 class="auth-title">Sign In</h1>
-      <p class="auth-subtitle">Don't have an account? <a href="#" @click.prevent="$emit('switchToSignUp')" class="create-link">Create now</a></p>
+      <p class="auth-subtitle">Don't have an account? <a href="#" @click.prevent="switchToSignUp" class="create-link">Create now</a></p>
       
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
@@ -71,11 +71,11 @@
       <div class="auth-divider">OR</div>
       
       <div class="social-login">
-        <button class="social-btn google-btn" @click="socialLogin('google')" :disabled="isLoading">
-          <img src="../assets/Nav Bar/git.png" alt="Google" />
+        <button class="social-btn google" @click="socialLogin('google')" :disabled="isLoading">
+          <img src="../assets/Nav Bar/fb.png" alt="Google" />
           <span>Continue with Google</span>
         </button>
-        <button class="social-btn facebook-btn" @click="socialLogin('facebook')" :disabled="isLoading">
+        <button class="social-btn facebook" @click="socialLogin('facebook')" :disabled="isLoading">
           <img src="../assets/Nav Bar/fb.png" alt="Facebook" />
           <span>Continue with Facebook</span>
         </button>
@@ -111,6 +111,8 @@
 </template>
 
 <script>
+import { api } from '../api.js'
+
 export default {
   name: 'Login',
   emits: ['switchToSignUp', 'loginSuccess', 'backToHome'],
@@ -126,6 +128,7 @@ export default {
       successMessage: '',
       isLoading: false,
       showPassword: false,
+      isTransitioning: false,
       logoSrc: require('../assets/Nav Bar/Logo.png')
     }
   },
@@ -158,125 +161,82 @@ export default {
     async handleLogin() {
       this.errorMessage = '';
       this.successMessage = '';
-      
+
       if (!this.validateForm()) {
         return;
       }
-      
+
       this.isLoading = true;
-      
+
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Check for test account first
-        if (this.formData.email === 'test@ramyeoncorner.com' && this.formData.password === 'Test123!') {
-          const testUserSession = {
-            id: 'test-user-001',
-            email: 'test@ramyeoncorner.com',
-            firstName: 'Test',
-            lastName: 'User',
-            phone: '+1234567890',
-            points: 5280,
-            vouchers: [
-              {
-                id: 1,
-                title: 'Shin Ramyun',
-                subtitle: 'Spicy Noodle',
-                discount: '20% OFF',
-                code: 'SHIN20',
-                qrCode: 'SHIN20-QR-' + Date.now()
-              },
-              {
-                id: 2,
-                title: 'Fish Cake',
-                subtitle: 'Side Dish',
-                discount: '15% OFF',
-                code: 'FISH15',
-                qrCode: 'FISH15-QR-' + Date.now()
-              },
-              {
-                id: 3,
-                title: 'Welcome Bonus',
-                subtitle: 'Test Account Special',
-                discount: '30% OFF',
-                code: 'TEST30',
-                qrCode: 'TEST30-QR-' + Date.now()
-              }
-            ],
-            loginTime: new Date().toISOString()
-          };
-          
-          localStorage.setItem('ramyeon_user_session', JSON.stringify(testUserSession));
-          
-          if (this.formData.rememberMe) {
-            localStorage.setItem('ramyeon_remember_user', this.formData.email);
-          }
-          
-          this.successMessage = 'Test account login successful! Welcome back!';
-          
-          setTimeout(() => {
-            this.$emit('loginSuccess', testUserSession);
-          }, 1000);
-          
-          return;
+        // Call backend API
+        const response = await api.auth.login({
+          email: this.formData.email,
+          password: this.formData.password
+        });
+
+        const { user, access_token, token, refresh_token } = response.data;
+
+        // Store auth token (support either field name)
+        const accessToken = access_token || token;
+        if (accessToken) {
+          localStorage.setItem('auth_token', accessToken);
         }
-        
-        // Mock authentication logic for regular users
-        const users = JSON.parse(localStorage.getItem('ramyeon_users') || '[]');
-        const user = users.find(u => 
-          u.email === this.formData.email && u.password === this.formData.password
-        );
-        
-        if (user) {
-          // Store user session
-          const userSession = {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            phone: user.phone,
-            points: user.points || 3280,
-            vouchers: user.vouchers || [
-              {
-                id: 1,
-                title: 'Shin Ramyun',
-                subtitle: 'Spicy Noodle',
-                discount: '20% OFF',
-                code: 'SHIN20',
-                qrCode: 'SHIN20-QR-' + Date.now()
-              },
-              {
-                id: 2,
-                title: 'Fish Cake',
-                subtitle: 'Side Dish',
-                discount: '15% OFF',
-                code: 'FISH15',
-                qrCode: 'FISH15-QR-' + Date.now()
-              }
-            ],
-            loginTime: new Date().toISOString()
-          };
-          
-          localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
-          
-          if (this.formData.rememberMe) {
-            localStorage.setItem('ramyeon_remember_user', this.formData.email);
-          }
-          
-          this.successMessage = 'Login successful! Redirecting...';
-          
-          setTimeout(() => {
-            this.$emit('loginSuccess', userSession);
-          }, 1000);
-          
-        } else {
-          this.errorMessage = 'Invalid email or password. Please try again.';
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token);
         }
-        
+
+        // Store user session
+        const userSession = {
+          id: user.id || user._id,
+          email: user.email,
+          firstName: user.first_name || user.firstName || user.name?.split(' ')[0],
+          lastName: user.last_name || user.lastName || (user.name?.split(' ').slice(1).join(' ') || ''),
+          phone: user.phone,
+          points: user.points || 3280,
+          vouchers: user.vouchers || [
+            {
+              id: 1,
+              title: 'Shin Ramyun',
+              subtitle: 'Spicy Noodle',
+              discount: '20% OFF',
+              code: 'SHIN20',
+              qrCode: 'SHIN20-QR-' + Date.now()
+            },
+            {
+              id: 2,
+              title: 'Fish Cake',
+              subtitle: 'Side Dish',
+              discount: '15% OFF',
+              code: 'FISH15',
+              qrCode: 'FISH15-QR-' + Date.now()
+            }
+          ],
+          loginTime: new Date().toISOString()
+        };
+
+        localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
+
+        if (this.formData.rememberMe) {
+          localStorage.setItem('ramyeon_remember_user', this.formData.email);
+        }
+
+        this.successMessage = 'Login successful! Redirecting...';
+
+        setTimeout(() => {
+          this.$emit('loginSuccess', userSession);
+        }, 1000);
+
       } catch (error) {
-        this.errorMessage = 'An error occurred during login. Please try again.';
         console.error('Login error:', error);
+
+        if (error.response?.status === 401) {
+          this.errorMessage = 'Invalid email or password. Please try again.';
+        } else if (error.response?.status === 400) {
+          this.errorMessage = error.response.data?.message || 'Invalid login credentials.';
+        } else {
+          this.errorMessage = 'An error occurred during login. Please try again.';
+        }
       } finally {
         this.isLoading = false;
       }
@@ -326,6 +286,14 @@ export default {
         
         this.isLoading = false;
       }, 1500);
+    },
+    
+    switchToSignUp() {
+      this.isTransitioning = true;
+      setTimeout(() => {
+        this.$emit('switchToSignUp');
+        this.isTransitioning = false;
+      }, 800);
     }
   },
   

@@ -1,10 +1,10 @@
 <template>
-  <div class="auth-container">
-    <div class="auth-card">
+  <div class="auth-container signup-page">
+    <div class="auth-card" :class="{ 'slide-to-login': isTransitioning }">
       <img :src="logoSrc" alt="Ramyeon Corner Logo" class="auth-logo" />
 
       <h1 class="auth-title">Join Us!</h1>
-      <p class="auth-subtitle">Already have an account? <a href="#" @click.prevent="$emit('switchToLogin')" class="create-link">Sign in here</a></p>
+      <p class="auth-subtitle">Already have an account? <a href="#" @click.prevent="switchToLogin" class="create-link">Sign in here</a></p>
 
       <div v-if="errorMessage" class="error-message">
         {{ errorMessage }}
@@ -137,11 +137,11 @@
       <div class="auth-divider">OR</div>
 
       <div class="social-login">
-        <button class="social-btn google-btn" @click="socialSignUp('google')" :disabled="isLoading">
-          <img src="../assets/Nav Bar/git.png" alt="Google" />
+        <button class="social-btn google" @click="socialSignUp('google')" :disabled="isLoading">
+          <img src="../assets/Nav Bar/fb.png" alt="Google" />
           <span>Continue with Google</span>
         </button>
-        <button class="social-btn facebook-btn" @click="socialSignUp('facebook')" :disabled="isLoading">
+        <button class="social-btn facebook" @click="socialSignUp('facebook')" :disabled="isLoading">
           <img src="../assets/Nav Bar/fb.png" alt="Facebook" />
           <span>Continue with Facebook</span>
         </button>
@@ -171,6 +171,8 @@
 </template>
 
 <script>
+import { api } from '../api.js'
+
 export default {
   name: 'SignUp',
   emits: ['switchToLogin', 'signUpSuccess', 'backToHome'],
@@ -192,6 +194,7 @@ export default {
       isLoading: false,
       showPassword: false,
       showConfirmPassword: false,
+      isTransitioning: false,
       logoSrc: require('../assets/Nav Bar/Logo.png')
     }
   },
@@ -277,29 +280,36 @@ export default {
       this.isLoading = true;
 
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        // Call backend register API
+        const response = await api.auth.register({
+          email: this.formData.email.toLowerCase(),
+          password: this.formData.password,
+          first_name: this.formData.firstName.trim(),
+          last_name: this.formData.lastName.trim(),
+          phone: this.formData.phone,
+          role: 'customer'
+        });
 
-        // Check if user already exists
-        const users = JSON.parse(localStorage.getItem('ramyeon_users') || '[]');
-        const existingUser = users.find(u => u.email === this.formData.email);
+        const { user, access_token, token, refresh_token } = response.data;
 
-        if (existingUser) {
-          this.errorMessage = 'An account with this email already exists. Please sign in instead.';
-          return;
+        // Store tokens
+        const accessToken = access_token || token;
+        if (accessToken) {
+          localStorage.setItem('auth_token', accessToken);
+        }
+        if (refresh_token) {
+          localStorage.setItem('refresh_token', refresh_token);
         }
 
-        // Create new user
-        const newUser = {
-          id: Date.now(),
-          firstName: this.formData.firstName.trim(),
-          lastName: this.formData.lastName.trim(),
-          email: this.formData.email.toLowerCase(),
-          phone: this.formData.phone,
-          password: this.formData.password, // In real app, this would be hashed
-          points: 0, // New users start with 0 points
-          vouchers: [
-            // Welcome voucher for new users
+        // Create user session from backend user
+        const userSession = {
+          id: user.id || user._id,
+          email: user.email,
+          firstName: user.first_name || user.firstName || user.full_name?.split(' ')[0],
+          lastName: user.last_name || user.lastName || (user.full_name?.split(' ').slice(1).join(' ') || ''),
+          phone: user.phone,
+          points: user.points || 0,
+          vouchers: user.vouchers || [
             {
               id: 1,
               title: 'Welcome Bonus',
@@ -309,23 +319,6 @@ export default {
               qrCode: 'WELCOME25-QR-' + Date.now()
             }
           ],
-          subscribeNewsletter: this.formData.subscribeNewsletter,
-          createdAt: new Date().toISOString()
-        };
-
-        // Save user to localStorage
-        users.push(newUser);
-        localStorage.setItem('ramyeon_users', JSON.stringify(users));
-
-        // Create user session
-        const userSession = {
-          id: newUser.id,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          phone: newUser.phone,
-          points: newUser.points,
-          vouchers: newUser.vouchers,
           loginTime: new Date().toISOString()
         };
 
@@ -335,11 +328,21 @@ export default {
 
         setTimeout(() => {
           this.$emit('signUpSuccess', userSession);
-        }, 1500);
+        }, 1000);
 
       } catch (error) {
-        this.errorMessage = 'An error occurred during registration. Please try again.';
         console.error('SignUp error:', error);
+
+        if (error.response?.status === 400) {
+          const errorData = error.response.data;
+          if (errorData.email) {
+            this.errorMessage = 'An account with this email already exists. Please sign in instead.';
+          } else {
+            this.errorMessage = errorData.message || 'Invalid registration data.';
+          }
+        } else {
+          this.errorMessage = 'An error occurred during registration. Please try again.';
+        }
       } finally {
         this.isLoading = false;
       }
@@ -397,6 +400,14 @@ export default {
 
         this.isLoading = false;
       }, 1500);
+    },
+    
+    switchToLogin() {
+      this.isTransitioning = true;
+      setTimeout(() => {
+        this.$emit('switchToLogin');
+        this.isTransitioning = false;
+      }, 800);
     }
   }
 }

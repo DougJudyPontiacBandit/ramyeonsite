@@ -31,6 +31,7 @@
 
 <script>
 import '../components/Menu.css';
+import { api } from '../api.js';
 
 export default {
   name: "MenuPage",
@@ -42,9 +43,77 @@ export default {
   },
   data() {
     return {
-      categories: ["All", "Noodles", "Rice Cake", "Side Dish", "Drinks"],
+      categories: ["All"],
       selectedCategory: "All",
-      products: [
+      products: [],
+      loading: false,
+      error: null
+    };
+  },
+  computed: {
+    filteredProducts() {
+      if (this.selectedCategory === "All") {
+        return this.products;
+      }
+      return this.products.filter(
+        (product) => product.category === this.selectedCategory
+      );
+    },
+  },
+  async mounted() {
+    await this.loadCategories();
+    await this.loadProducts();
+  },
+  methods: {
+    async loadCategories() {
+      try {
+        const response = await api.categories.list();
+        const backendCategories = response.data.map(cat => cat.name);
+        this.categories = ["All", ...backendCategories];
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        // Fallback to default categories
+        this.categories = ["All", "Noodles", "Rice Cake", "Side Dish", "Drinks"];
+      }
+    },
+
+    async loadProducts() {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const response = await api.products.list();
+        // Transform backend products to frontend format
+        this.products = response.data.map(product => ({
+          id: product.id,
+          name: product.name,
+          category: product.category_name || product.category,
+          price: product.price,
+          description: product.description,
+          image: product.image_url || this.getDefaultImage(product.category)
+        }));
+      } catch (error) {
+        console.error('Error loading products:', error);
+        this.error = 'Failed to load products. Please try again.';
+        // Fallback to local products
+        this.loadFallbackProducts();
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    getDefaultImage(category) {
+      const imageMap = {
+        'Noodles': require("../assets/Home/BigRamen.png"),
+        'Rice Cake': require("../assets/Home/Invoice.png"),
+        'Side Dish': require("../assets/Home/Pick up.png"),
+        'Drinks': require("../assets/Home/Clock.png")
+      };
+      return imageMap[category] || require("../assets/Home/BigRamen.png");
+    },
+
+    loadFallbackProducts() {
+      this.products = [
         {
           id: 1,
           name: "Shin Ramen",
@@ -109,23 +178,13 @@ export default {
           description: "Made with dough, sausage, potato crust, salt, and sugar.",
           image: require("../assets/Home/Pick up 1.png"),
         },
-      ],
-    };
-  },
-  computed: {
-    filteredProducts() {
-      if (this.selectedCategory === "All") {
-        return this.products;
-      }
-      return this.products.filter(
-        (product) => product.category === this.selectedCategory
-      );
+      ];
     },
-  },
-  methods: {
+
     selectCategory(category) {
       this.selectedCategory = category;
     },
+
     addToCart(product) {
       this.onAddToCart(product);
     },

@@ -43,7 +43,7 @@
               <a href="#" class="auth-btn signup-btn" @click.prevent="setCurrentPage('SignUp')">Sign Up</a>
             </div>
             <div class="user-menu" v-else>
-              <span class="welcome-text">Welcome, {{ currentUser.firstName }}!</span>
+              <span class="welcome-text">Welcome, {{ currentUserName }}!</span>
               <a href="#" class="profile-link" @click.prevent="setCurrentPage('Profile')">Profile</a>
               <a href="#" class="logout-link" @click.prevent="handleLogout">Sign Out</a>
             </div>
@@ -77,6 +77,7 @@
             <li><a href="#" :class="{ active: currentPage === 'Menu' }" @click.prevent="setCurrentPage('Menu')">Menu</a></li>
             <li><a href="#" :class="{ active: currentPage === 'Promotions' }" @click.prevent="setCurrentPage('Promotions')">Promotions</a></li>
             <li><a href="#" :class="{ active: currentPage === 'Contact' }" @click.prevent="setCurrentPage('Contact')">Contact Us</a></li>
+            <li><a href="#" :class="{ active: currentPage === 'Orders' }" @click.prevent="setCurrentPage('Orders')">My Orders</a></li>
           </ul>
           <button class="cart-btn" aria-label="Cart" @click="setCurrentPage('Cart')">
             🛒 <span class="cart-count">{{ cartCount }}</span>
@@ -93,7 +94,9 @@
       <Profile v-if="currentPage === 'Profile'" @setCurrentPage="setCurrentPage" />
       <ProfileSettings v-if="currentPage === 'ProfileSettings'" @setCurrentPage="setCurrentPage" />
       <Settings v-if="currentPage === 'Settings'" @setCurrentPage="setCurrentPage" />
-      <Cart v-if="currentPage === 'Cart'" @setCurrentPage="setCurrentPage" />
+      <Cart v-if="currentPage === 'Cart'" @setCurrentPage="setCurrentPage" @cartUpdated="handleCartUpdate" />
+      <Orders v-if="currentPage === 'Orders'" @setCurrentPage="setCurrentPage" />
+      <OrderDetails v-if="currentPage === 'OrderDetails'" :orderId="selectedOrderId" @setCurrentPage="setCurrentPage" />
 
       <!-- Sign Out Confirmation Modal -->
       <div v-if="showSignOutModal" class="signout-modal-overlay" @click="cancelSignOut">
@@ -209,11 +212,6 @@
               </div>
             </div>
         </div>
-      </div>
-
-      <!-- Copyright Section -->
-      <div class="footer-bottom">
-        <!-- Social Media Icons -->
         <div class="footer-social">
           <a href="#" aria-label="Facebook" class="social-link">
             <img src="./assets/Nav Bar/fb.png" alt="Facebook" class="social-icon-img">
@@ -228,6 +226,11 @@
             <img src="./assets/Nav Bar/git.png" alt="GitHub" class="social-icon-img">
           </a>
         </div>
+      </div>
+
+      <!-- Copyright Section -->
+      <div class="footer-bottom">
+        <!-- Social Media Icons -->
         <div class="footer-bottom-content">
           <p>&copy; 2025 Ramyeon Corner. All rights reserved.</p>
         </div>
@@ -249,6 +252,8 @@ import Profile from './components/Profile.vue'
 import ProfileSettings from './components/ProfileSettings.vue'
 import Settings from './components/Settings.vue'
 import Cart from './components/Cart.vue'
+import Orders from './components/Orders.vue'
+import OrderDetails from './components/OrderDetails.vue'
 
 export default {
   name: 'App',
@@ -263,11 +268,14 @@ export default {
     Profile,
     ProfileSettings,
     Settings,
-    Cart
+    Cart,
+    Orders,
+    OrderDetails
   },
   data() {
     return {
       currentPage: 'Home',
+      selectedOrderId: null,
       cartItems: [],
       newsletterEmail: '',
       currentUser: null,
@@ -281,6 +289,13 @@ export default {
   computed: {
     isLoggedIn() {
       return this.currentUser !== null;
+    },
+    currentUserName() {
+      const user = this.currentUser || {};
+      const first = typeof user.firstName === 'string' && user.firstName.trim() ? user.firstName.trim() : '';
+      const last = typeof user.lastName === 'string' && user.lastName.trim() ? user.lastName.trim() : '';
+      const name = `${first} ${last}`.trim();
+      return name || (typeof user.email === 'string' ? user.email : 'User');
     },
     isAuthPage() {
       return ['Login', 'SignUp'].includes(this.currentPage);
@@ -298,32 +313,73 @@ export default {
     this.loadCartItems();
   },
   methods: {
-    setCurrentPage(page) {
+    setCurrentPage(page, payload = null) {
       this.currentPage = page;
+      if (page === 'OrderDetails') {
+        this.selectedOrderId = payload;
+      }
     },
     
-    addToCart(product) {
+    async addToCart(product) {
       if (!this.isLoggedIn) {
         this.setCurrentPage('Login');
         return;
       }
 
-      const existingItem = this.cartItems.find(item => item.id === product.id);
-
-      if (existingItem) {
-        existingItem.quantity++;
-      } else {
-        this.cartItems.push({
-          ...product,
-          quantity: 1
-        });
+      if (!product || typeof product !== 'object') {
+        console.warn('addToCart called with invalid product:', product);
+        return;
       }
 
-      // Save cart to localStorage
-      localStorage.setItem('ramyeon_cart', JSON.stringify(this.cartItems));
+      const id = product.id ?? product._id;
+      if (!id) {
+        console.warn('addToCart: product missing id/_id:', product);
+        return;
+      }
 
-      // Show success message
-      this.showCartNotification(product.name);
+      const name = product.name || product.title || 'Item';
+      const price = typeof product.price === 'number' && isFinite(product.price) ? product.price : 0;
+
+      const existingItem = this.cartItems.find(item => item.id === id);
+      console.log('Adding to cart:', { id, name, price, existingItem: !!existingItem, currentQuantity: existingItem?.quantity });
+
+      try {
+        // Attempt to persist to backend cart
+        const { api } = await import('./api.js')
+        const quantity = existingItem ? existingItem.quantity + 1 : 1
+        await api.cart.addItem(id, quantity, price, name)
+
+        // Reflect local state optimistically
+        if (existingItem) {
+          existingItem.quantity++;
+        } else {
+          this.cartItems.push({
+            ...product,
+            id,
+            name,
+            price,
+            quantity: 1
+          });
+        }
+
+        localStorage.setItem('ramyeon_cart', JSON.stringify(this.cartItems));
+        this.showCartNotification(name);
+      } catch (err) {
+        console.warn('Backend cart add failed, falling back to local only:', err)
+        if (existingItem) {
+          existingItem.quantity++;
+        } else {
+          this.cartItems.push({
+            ...product,
+            id,
+            name,
+            price,
+            quantity: 1
+          });
+        }
+        localStorage.setItem('ramyeon_cart', JSON.stringify(this.cartItems));
+        this.showCartNotification(name);
+      }
     },
     
     showCartNotification(productName) {
@@ -405,14 +461,24 @@ export default {
     },
     
     checkUserSession() {
-      const userSession = localStorage.getItem('ramyeon_user_session');
-      if (userSession) {
-        try {
-          this.currentUser = JSON.parse(userSession);
-        } catch (error) {
-          console.error('Error parsing user session:', error);
+      const raw = localStorage.getItem('ramyeon_user_session');
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          // Minimal validation: require an id or email/firstName
+          const hasIdentity = Boolean(parsed.id || parsed._id || parsed.email || parsed.firstName);
+          this.currentUser = hasIdentity ? parsed : null;
+          if (!hasIdentity) {
+            console.warn('Invalid session object, clearing.');
+            localStorage.removeItem('ramyeon_user_session');
+          }
+        } else {
           localStorage.removeItem('ramyeon_user_session');
         }
+      } catch (error) {
+        console.error('Error parsing user session:', error);
+        localStorage.removeItem('ramyeon_user_session');
       }
     },
     
@@ -494,14 +560,30 @@ export default {
     
     loadCartItems() {
       const savedCart = localStorage.getItem('ramyeon_cart');
-      if (savedCart) {
-        try {
-          this.cartItems = JSON.parse(savedCart);
-        } catch (error) {
-          console.error('Error loading cart items:', error);
-          this.cartItems = [];
-        }
+      if (!savedCart) {
+        this.cartItems = [];
+        return;
       }
+      try {
+        const parsed = JSON.parse(savedCart);
+        const normalized = Array.isArray(parsed) ? parsed.map((item) => {
+          const id = item?.id ?? item?._id;
+          const name = item?.name || item?.title || 'Item';
+          const price = typeof item?.price === 'number' && isFinite(item.price) ? item.price : 0;
+          const quantity = Number.isInteger(item?.quantity) && item.quantity > 0 ? item.quantity : 1;
+          return { ...item, id, name, price, quantity };
+        }).filter(i => i && i.id) : [];
+        this.cartItems = normalized;
+      } catch (error) {
+        console.error('Error loading cart items:', error);
+        this.cartItems = [];
+      }
+    },
+    
+    handleCartUpdate(updatedCart) {
+      // Sync cart state from Cart component
+      console.log('Cart updated from Cart component:', updatedCart);
+      this.cartItems = updatedCart;
     }
   },
   
@@ -513,6 +595,14 @@ export default {
       } else {
         document.documentElement.classList.remove('dark-mode');
       }
+    },
+    
+    // Watch for cart changes and sync to localStorage
+    cartItems: {
+      handler(newCart) {
+        localStorage.setItem('ramyeon_cart', JSON.stringify(newCart));
+      },
+      deep: true
     }
   }
 }

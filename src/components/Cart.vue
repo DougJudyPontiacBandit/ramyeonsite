@@ -136,6 +136,9 @@
         <!-- Special Instructions -->
         <div class="special-instructions">
           <h2>Special Instructions</h2>
+          <div class="promo-input">
+            <input type="text" v-model="promotionCode" placeholder="Promo code (optional)" class="address-field" />
+          </div>
           <textarea 
             v-model="specialInstructions" 
             placeholder="Any special requests or instructions for your order..."
@@ -168,28 +171,10 @@
 <script>
 export default {
   name: 'Cart',
-  emits: ['setCurrentPage'],
+  emits: ['setCurrentPage', 'cartUpdated'],
   data() {
     return {
-      cartItems: [
-        // Sample cart items for demonstration
-        {
-          id: 1,
-          name: 'Shin Ramen',
-          description: 'Made with Shin ramen, eggs, spring onions, oil and spices.',
-          price: 150,
-          quantity: 2,
-          image: require('../assets/Home/BigRamen.png')
-        },
-        {
-          id: 2,
-          name: 'Tteok-bokki',
-          description: 'Made with Korean rice cakes, fish cakes, dashi stock and gochujang.',
-          price: 200,
-          quantity: 1,
-          image: require('../assets/Home/Invoice.png')
-        }
-      ],
+      cartItems: [],
       deliveryType: 'delivery',
       deliveryAddress: '',
       paymentMethod: 'cash',
@@ -221,19 +206,35 @@ export default {
     }
   },
   methods: {
-    increaseQuantity(itemId) {
+    async increaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
-      if (item) {
-        item.quantity++;
+      if (!item) return;
+      try {
+        const { api } = await import('../api.js')
+        await api.cart.updateItem(itemId, item.quantity + 1)
+        item.quantity++
+      } catch (e) {
+        item.quantity++
       }
     },
-    decreaseQuantity(itemId) {
+    async decreaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
-      if (item && item.quantity > 1) {
-        item.quantity--;
+      if (!item || item.quantity <= 1) return;
+      try {
+        const { api } = await import('../api.js')
+        await api.cart.updateItem(itemId, item.quantity - 1)
+        item.quantity--
+      } catch (e) {
+        item.quantity--
       }
     },
-    removeItem(itemId) {
+    async removeItem(itemId) {
+      try {
+        const { api } = await import('../api.js')
+        await api.cart.removeItem(itemId)
+      } catch (e) {
+        // ignore backend failure, still remove locally
+      }
       this.cartItems = this.cartItems.filter(item => item.id !== itemId);
     },
     openMap() {
@@ -273,37 +274,28 @@ export default {
       this.isProcessing = true;
       
       try {
-        // Simulate order processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const orderData = {
-          id: 'ORDER-' + Date.now(),
-          items: this.cartItems,
-          deliveryType: this.deliveryType,
-          deliveryAddress: this.deliveryAddress,
-          paymentMethod: this.paymentMethod,
-          specialInstructions: this.specialInstructions,
-          subtotal: this.subtotal,
-          deliveryFee: this.deliveryFee,
-          serviceFee: this.serviceFee,
-          total: this.total,
-          orderTime: new Date().toISOString(),
-          status: 'confirmed'
-        };
-        
-        // Store order in localStorage (in real app, this would be sent to backend)
-        const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-        orders.push(orderData);
-        localStorage.setItem('ramyeon_orders', JSON.stringify(orders));
-        
-        // Clear cart
-        this.cartItems = [];
-        
-        // Show success message
-        alert(`Order placed successfully! Order ID: ${orderData.id}\n\nEstimated ${this.deliveryType === 'delivery' ? 'delivery' : 'pickup'} time: ${this.deliveryType === 'delivery' ? '30-45' : '15-20'} minutes.`);
-        
-        // Redirect to profile or orders page
-        this.$emit('setCurrentPage', 'Profile');
+        const { api } = await import('../api.js')
+        const result = await api.cart.checkout(this.promotionCode || null)
+        // Attach delivery metadata in a follow-up if backend supports; already added metadata in backend
+        try {
+          await api.cart.checkout({
+            delivery_type: this.deliveryType,
+            delivery_address: this.deliveryAddress,
+            payment_method: this.paymentMethod,
+            special_instructions: this.specialInstructions
+          })
+        } catch (ignored) {
+          // ignore optional metadata failure
+        }
+
+        // Clear local cart on success
+        this.cartItems = []
+        localStorage.removeItem('ramyeon_cart')
+
+        // Basic confirmation
+        const txnId = result.data?.transaction?.transaction?.transaction_id || 'N/A'
+        alert(`Order placed successfully! Transaction ID: ${txnId}`)
+        this.$emit('setCurrentPage', 'Profile')
         
       } catch (error) {
         console.error('Checkout error:', error);
@@ -313,22 +305,41 @@ export default {
       }
     }
   },
-  mounted() {
-    // Load cart items from localStorage if available
-    const savedCart = localStorage.getItem('ramyeon_cart');
-    if (savedCart) {
-      try {
-        this.cartItems = JSON.parse(savedCart);
-      } catch (error) {
-        console.error('Error loading cart:', error);
+  async mounted() {
+    // Try loading cart from backend; fall back to localStorage
+    try {
+      const { api } = await import('../api.js')
+      const response = await api.cart.get()
+      const items = response.data?.cart?.items || []
+      this.cartItems = items.map(i => ({
+        id: i.product_id,
+        name: i.product_name,
+        price: i.price,
+        quantity: i.quantity,
+        image: require('../assets/Home/BigRamen.png'),
+        description: ''
+      }))
+    } catch (e) {
+      const savedCart = localStorage.getItem('ramyeon_cart');
+      if (savedCart) {
+        try {
+          this.cartItems = JSON.parse(savedCart);
+        } catch (error) {
+          console.error('Error loading cart:', error);
+        }
       }
     }
+    
+    // Emit cart update to parent component
+    this.$emit('cartUpdated', this.cartItems);
   },
   watch: {
     cartItems: {
       handler(newCart) {
         // Save cart to localStorage whenever it changes
         localStorage.setItem('ramyeon_cart', JSON.stringify(newCart));
+        // Emit cart update to parent component
+        this.$emit('cartUpdated', newCart);
       },
       deep: true
     }

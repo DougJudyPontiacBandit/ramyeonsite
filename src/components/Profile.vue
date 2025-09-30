@@ -62,6 +62,121 @@
           />
         </div>
 
+        <!-- Address Book Section -->
+        <div class="address-book-section">
+          <h3 class="address-book-title">Address Book</h3>
+          <p class="address-book-description">Manage your delivery addresses</p>
+          
+          <!-- Add New Address Button -->
+          <button class="add-address-btn" @click="showAddAddress = true">
+            + Add New Address
+          </button>
+          
+          <!-- Address List -->
+          <div class="address-list">
+            <div 
+              v-for="(address, index) in user.addresses" 
+              :key="index"
+              class="address-item"
+              :class="{ 'default': address.isDefault }"
+            >
+              <div class="address-info">
+                <h4 class="address-name">{{ address.name }}</h4>
+                <p class="address-details">{{ address.street }}, {{ address.city }}, {{ address.province }}</p>
+                <p class="address-postal">{{ address.postalCode }}</p>
+                <div class="address-actions">
+                  <button class="edit-btn" @click="editAddress(index)">Edit</button>
+                  <button class="delete-btn" @click="deleteAddress(index)">Delete</button>
+                  <button 
+                    v-if="!address.isDefault" 
+                    class="set-default-btn" 
+                    @click="setDefaultAddress(index)"
+                  >
+                    Set as Default
+                  </button>
+                </div>
+              </div>
+              <div class="address-default" v-if="address.isDefault">
+                <span class="default-badge">Default</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Add/Edit Address Modal -->
+          <div class="address-modal" v-if="showAddAddress || editingAddress !== null">
+            <div class="modal-content">
+              <h3 class="modal-title">{{ editingAddress !== null ? 'Edit Address' : 'Add New Address' }}</h3>
+              <form @submit.prevent="saveAddress">
+                <div class="form-group">
+                  <label for="addressName">Address Name</label>
+                  <input 
+                    type="text" 
+                    id="addressName" 
+                    v-model="currentAddress.name" 
+                    placeholder="e.g., Home, Work"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="street">Street Address</label>
+                  <input 
+                    type="text" 
+                    id="street" 
+                    v-model="currentAddress.street" 
+                    placeholder="Street name and number"
+                    required
+                  />
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="city">City</label>
+                    <input 
+                      type="text" 
+                      id="city" 
+                      v-model="currentAddress.city" 
+                      placeholder="City"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="province">Province</label>
+                    <input 
+                      type="text" 
+                      id="province" 
+                      v-model="currentAddress.province" 
+                      placeholder="Province"
+                      required
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="postalCode">Postal Code</label>
+                  <input 
+                    type="text" 
+                    id="postalCode" 
+                    v-model="currentAddress.postalCode" 
+                    placeholder="Postal code"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      v-model="currentAddress.isDefault"
+                    />
+                    Set as default delivery address
+                  </label>
+                </div>
+                <div class="modal-actions">
+                  <button type="button" class="cancel-btn" @click="cancelAddressEdit">Cancel</button>
+                  <button type="submit" class="save-btn">Save Address</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <!-- Settings Section -->
         <div class="settings-section">
           <h3 class="settings-title">Account & App Settings</h3>
@@ -107,12 +222,32 @@ export default {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         points: 3280,
-        vouchers: []
+        vouchers: [],
+        addresses: [
+          {
+            name: 'Home',
+            street: '123 Main St',
+            city: 'Bislig',
+            province: 'Surigao del Sur',
+            postalCode: '8311',
+            isDefault: true
+          }
+        ]
       },
       showVoucherModal: false,
       selectedVoucher: {},
       showAllVouchersFlag: false,
-      isDarkMode: false
+      isDarkMode: false,
+      showAddAddress: false,
+      editingAddress: null,
+      currentAddress: {
+        name: '',
+        street: '',
+        city: '',
+        province: '',
+        postalCode: '',
+        isDefault: false
+      }
     }
   },
   computed: {
@@ -272,6 +407,55 @@ export default {
           }, 300);
         }
       }, 3000);
+    },
+
+    editAddress(index) {
+      this.editingAddress = index;
+      this.currentAddress = { ...this.user.addresses[index] };
+    },
+
+    deleteAddress(index) {
+      if (confirm('Are you sure you want to delete this address?')) {
+        this.user.addresses.splice(index, 1);
+        this.updateUserSession();
+        this.showMessage('Address deleted successfully!', 'success');
+      }
+    },
+
+    setDefaultAddress(index) {
+      // Remove default from all addresses
+      this.user.addresses.forEach(addr => addr.isDefault = false);
+      // Set default for selected address
+      this.user.addresses[index].isDefault = true;
+      this.updateUserSession();
+      this.showMessage('Default address updated!', 'success');
+    },
+
+    saveAddress() {
+      if (this.editingAddress !== null) {
+        // Update existing address
+        this.user.addresses[this.editingAddress] = { ...this.currentAddress };
+        this.showMessage('Address updated successfully!', 'success');
+      } else {
+        // Add new address
+        this.user.addresses.push({ ...this.currentAddress });
+        this.showMessage('Address added successfully!', 'success');
+      }
+      this.cancelAddressEdit();
+      this.updateUserSession();
+    },
+
+    cancelAddressEdit() {
+      this.showAddAddress = false;
+      this.editingAddress = null;
+      this.currentAddress = {
+        name: '',
+        street: '',
+        city: '',
+        province: '',
+        postalCode: '',
+        isDefault: false
+      };
     }
   },
 
@@ -359,6 +543,256 @@ export default {
   }
 }
 
+/* Address Book Styles */
+.address-book-section {
+  background: white;
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.address-book-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.address-book-description {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.add-address-btn {
+  padding: 12px 20px;
+  background: #ff4757;
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+}
+
+.add-address-btn:hover {
+  background: #ff3742;
+  transform: translateY(-2px);
+}
+
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.address-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border: 2px solid #eee;
+  border-radius: 15px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.address-item.default {
+  border-color: #ff4757;
+  background: rgba(255, 71, 87, 0.05);
+}
+
+.address-info {
+  flex: 1;
+}
+
+.address-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.address-details {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.address-postal {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.address-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.edit-btn, .delete-btn, .set-default-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.edit-btn {
+  background: #17a2b8;
+  color: white;
+}
+
+.edit-btn:hover {
+  background: #138496;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background: #c82333;
+}
+
+.set-default-btn {
+  background: #28a745;
+  color: white;
+}
+
+.set-default-btn:hover {
+  background: #218838;
+}
+
+.address-default {
+  display: flex;
+  align-items: center;
+}
+
+.default-badge {
+  background: #ff4757;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.address-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  padding: 30px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #eee;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #ff4757;
+  box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.cancel-btn, .save-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #5a6268;
+}
+
+.save-btn {
+  background: #28a745;
+  color: white;
+}
+
+.save-btn:hover {
+  background: #218838;
+}
+
 /* Responsive enhancements */
 @media (max-width: 480px) {
   .voucher-icon {
@@ -378,6 +812,19 @@ export default {
   .voucher-discount {
     font-size: 0.8rem;
     padding: 6px 12px;
+  }
+  
+  .address-actions {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-content {
+    padding: 20px;
   }
 }
 </style>
