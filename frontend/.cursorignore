@@ -1,0 +1,9 @@
+# Cursor ignore file
+# Files listed here will NOT be accessible to Cursor AI
+# Use ! prefix to explicitly unblock files
+
+# Unblock .env files so you can work with them
+!.env
+!.env.local
+!.env.example
+!*.env

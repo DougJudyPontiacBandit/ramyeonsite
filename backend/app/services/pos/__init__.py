@@ -1,0 +1,1 @@
+# POS services module
