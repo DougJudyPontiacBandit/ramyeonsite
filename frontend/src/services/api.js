@@ -26,25 +26,23 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Auth API
+// Auth API - Connected to /api/auth/customer/* endpoints
 export const authAPI = {
-  // Register new user
+  // Register new customer
   register: async (userData) => {
     try {
-      const response = await apiClient.post('/auth/register/', {
+      const response = await apiClient.post('/auth/customer/register/', {
         email: userData.email,
         password: userData.password,
-        password2: userData.password,  // Backend expects password confirmation
-        username: userData.email.split('@')[0],  // Use email prefix as username
-        first_name: userData.firstName,
-        last_name: userData.lastName,
-        phone: userData.phone,
+        username: userData.username || userData.email.split('@')[0],
+        full_name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+        phone: userData.phone || '',
+        delivery_address: userData.delivery_address || {}
       });
       
-      // Save tokens
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-        localStorage.setItem('refresh_token', response.data.refresh_token);
+      // Save token (backend returns 'token' not 'access_token')
+      if (response.data.token) {
+        localStorage.setItem('access_token', response.data.token);
       }
       
       return response.data;
@@ -53,18 +51,17 @@ export const authAPI = {
     }
   },
 
-  // Login user
+  // Login customer
   login: async (email, password) => {
     try {
-      const response = await apiClient.post('/auth/login/', {
+      const response = await apiClient.post('/auth/customer/login/', {
         email,
         password,
       });
       
-      // Save tokens
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
-        localStorage.setItem('refresh_token', response.data.refresh_token);
+      // Save token
+      if (response.data.token) {
+        localStorage.setItem('access_token', response.data.token);
       }
       
       return response.data;
@@ -73,180 +70,241 @@ export const authAPI = {
     }
   },
 
-  // Logout user
+  // Logout customer
   logout: async () => {
     try {
-      await apiClient.post('/auth/logout/');
+      // Clear local storage
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('ramyeon_user_session');
     } catch (error) {
-      // Still clear local storage even if API call fails
+      // Still clear local storage even if there's an error
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       localStorage.removeItem('ramyeon_user_session');
     }
   },
 
-  // Get user profile
+  // Get current customer profile
   getProfile: async () => {
     try {
-      const response = await apiClient.get('/auth/profile/');
+      const response = await apiClient.get('/auth/customer/me/');
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch profile' };
     }
   },
 
-  // Update user profile
-  updateProfile: async (profileData) => {
+  // Change customer password
+  changePassword: async (oldPassword, newPassword) => {
     try {
-      const response = await apiClient.put('/auth/profile/update/', profileData);
+      const response = await apiClient.post('/auth/customer/password/change/', {
+        old_password: oldPassword,
+        new_password: newPassword,
+      });
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to update profile' };
+      throw error.response?.data || { message: 'Failed to change password' };
     }
   },
 };
 
-// Products API
+// POS API - Connected to /api/pos/* endpoints (for cashier operations)
+export const posAPI = {
+  // Scan user QR code
+  scanUserQR: async (qrCode) => {
+    try {
+      const response = await apiClient.post('/pos/scan-user/', {
+        qr_code: qrCode,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to scan user QR code' };
+    }
+  },
+
+  // Scan promotion QR code
+  scanPromotionQR: async (qrCode) => {
+    try {
+      const response = await apiClient.post('/pos/scan-promotion/', {
+        qr_code: qrCode,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to scan promotion QR code' };
+    }
+  },
+
+  // Redeem promotion
+  redeemPromotion: async (userQrCode, promotionQrCode, cashierName, orderId = null) => {
+    try {
+      const response = await apiClient.post('/pos/redeem-promotion/', {
+        user_qr_code: userQrCode,
+        promotion_qr_code: promotionQrCode,
+        cashier_name: cashierName,
+        order_id: orderId,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to redeem promotion' };
+    }
+  },
+
+  // Award points manually
+  awardPoints: async (userQrCode, points, description, cashierName) => {
+    try {
+      const response = await apiClient.post('/pos/award-points/', {
+        user_qr_code: userQrCode,
+        points: points,
+        description: description,
+        cashier_name: cashierName,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to award points' };
+    }
+  },
+
+  // Process order points
+  processOrderPoints: async (userQrCode, orderTotal, orderId = null) => {
+    try {
+      const response = await apiClient.post('/pos/process-order-points/', {
+        user_qr_code: userQrCode,
+        order_total: orderTotal,
+        order_id: orderId,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to process order points' };
+    }
+  },
+
+  // Get user by QR code
+  getUserByQR: async (qrCode) => {
+    try {
+      const response = await apiClient.get(`/pos/user/${qrCode}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to get user' };
+    }
+  },
+
+  // Get promotion by QR code
+  getPromotionByQR: async (qrCode) => {
+    try {
+      const response = await apiClient.get(`/pos/promotion/${qrCode}/`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to get promotion' };
+    }
+  },
+
+  // Get POS dashboard stats
+  getDashboard: async () => {
+    try {
+      const response = await apiClient.get('/pos/dashboard/');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch dashboard' };
+    }
+  },
+};
+
+// ============================================================================
+// PLACEHOLDER APIs - These endpoints are not yet implemented in the backend
+// Uncomment and use when backend endpoints are ready
+// ============================================================================
+
+// Products API (Currently commented out in backend)
 export const productsAPI = {
-  // Get all products
+  // Note: These endpoints are not active yet
+  // Uncomment in backend/api/urls.py first
   getAll: async () => {
-    try {
-      const response = await apiClient.get('/products/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch products' };
-    }
+    console.warn('Products API not yet implemented in backend');
+    return { results: [] };
+    // try {
+    //   const response = await apiClient.get('/products/');
+    //   return response.data;
+    // } catch (error) {
+    //   throw error.response?.data || { message: 'Failed to fetch products' };
+    // }
   },
 
-  // Get product by ID
+  // eslint-disable-next-line no-unused-vars
   getById: async (id) => {
-    try {
-      const response = await apiClient.get(`/products/${id}/`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch product' };
-    }
+    console.warn('Products API not yet implemented in backend');
+    return null;
   },
 };
 
-// Categories API
+// Categories API (Currently commented out in backend)
 export const categoriesAPI = {
-  // Get all categories
   getAll: async () => {
-    try {
-      const response = await apiClient.get('/categories/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch categories' };
-    }
+    console.warn('Categories API not yet implemented in backend');
+    return { results: [] };
   },
 };
 
-// Cart API
+// Cart API (Currently commented out in backend)
 export const cartAPI = {
-  // Get user cart
   getCart: async () => {
-    try {
-      const response = await apiClient.get('/cart/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch cart' };
-    }
+    console.warn('Cart API not yet implemented in backend');
+    return { items: [], total: 0 };
   },
 
-  // Add item to cart
+  // eslint-disable-next-line no-unused-vars
   addItem: async (productId, quantity = 1) => {
-    try {
-      const response = await apiClient.post('/cart/add_item/', {
-        product_id: productId,
-        quantity,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to add item to cart' };
-    }
+    console.warn('Cart API not yet implemented in backend');
+    return { message: 'Cart API not available' };
   },
 
-  // Remove item from cart
+  // eslint-disable-next-line no-unused-vars
   removeItem: async (itemId) => {
-    try {
-      const response = await apiClient.post('/cart/remove_item/', {
-        item_id: itemId,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to remove item from cart' };
-    }
+    console.warn('Cart API not yet implemented in backend');
+    return { message: 'Cart API not available' };
   },
 
-  // Clear cart
   clearCart: async () => {
-    try {
-      const response = await apiClient.post('/cart/clear/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to clear cart' };
-    }
+    console.warn('Cart API not yet implemented in backend');
+    return { message: 'Cart API not available' };
   },
 };
 
-// Orders API
+// Orders API (Currently commented out in backend)
 export const ordersAPI = {
-  // Get all user orders
   getAll: async () => {
-    try {
-      const response = await apiClient.get('/orders/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch orders' };
-    }
+    console.warn('Orders API not yet implemented in backend');
+    return { results: [] };
   },
 
-  // Create order
+  // eslint-disable-next-line no-unused-vars
   create: async (orderData) => {
-    try {
-      const response = await apiClient.post('/orders/', orderData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to create order' };
-    }
+    console.warn('Orders API not yet implemented in backend');
+    return { message: 'Orders API not available' };
   },
 
-  // Get order by ID
+  // eslint-disable-next-line no-unused-vars
   getById: async (id) => {
-    try {
-      const response = await apiClient.get(`/orders/${id}/`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch order' };
-    }
+    console.warn('Orders API not yet implemented in backend');
+    return null;
   },
 };
 
-// Newsletter API
+// Newsletter API (Currently commented out in backend)
 export const newsletterAPI = {
+  // eslint-disable-next-line no-unused-vars
   subscribe: async (email) => {
-    try {
-      const response = await apiClient.post('/newsletter/subscribe/', { email });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to subscribe' };
-    }
+    console.warn('Newsletter API not yet implemented in backend');
+    return { message: 'Newsletter subscription not available' };
   },
 };
 
-// Contact API
+// Contact API (Currently commented out in backend)
 export const contactAPI = {
+  // eslint-disable-next-line no-unused-vars
   sendMessage: async (messageData) => {
-    try {
-      const response = await apiClient.post('/contact/', messageData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to send message' };
-    }
+    console.warn('Contact API not yet implemented in backend');
+    return { message: 'Contact form not available' };
   },
 };
 

@@ -221,14 +221,18 @@ export default {
         );
         
         // Create user session from API response
+        // Backend returns: { token, customer, message }
+        const customer = response.customer;
         const userSession = {
-          id: response.user.id,
-          email: response.user.email,
-          firstName: response.user.first_name,
-          lastName: response.user.last_name,
-          phone: response.user.phone,
-          points: response.user.points || 0,
-          vouchers: response.user.vouchers || [],
+          id: customer._id || customer.id,
+          email: customer.email,
+          username: customer.username,
+          fullName: customer.full_name,
+          firstName: customer.full_name ? customer.full_name.split(' ')[0] : '',
+          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : '',
+          phone: customer.phone || '',
+          points: customer.loyalty_points || 0,
+          deliveryAddress: customer.delivery_address || {},
           loginTime: new Date().toISOString()
         };
         
@@ -239,7 +243,7 @@ export default {
           localStorage.setItem('ramyeon_remember_user', this.formData.email);
         }
         
-        this.successMessage = 'Login successful! Welcome back!';
+        this.successMessage = response.message || 'Login successful! Welcome back!';
         
         setTimeout(() => {
           this.$emit('loginSuccess', userSession);
@@ -249,7 +253,9 @@ export default {
         console.error('Login error:', error);
         
         // Handle specific error messages from backend
-        if (error.detail) {
+        if (error.error) {
+          this.errorMessage = error.error;
+        } else if (error.detail) {
           this.errorMessage = error.detail;
         } else if (error.message) {
           this.errorMessage = error.message;

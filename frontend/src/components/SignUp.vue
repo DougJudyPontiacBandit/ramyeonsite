@@ -404,6 +404,7 @@ export default {
 
       try {
         // Call backend API to register user
+        // Backend expects: { email, password, username, full_name, phone, delivery_address }
         const response = await authAPI.register({
           firstName: this.formData.firstName.trim(),
           lastName: this.formData.lastName.trim(),
@@ -413,21 +414,25 @@ export default {
         });
 
         // Create user session from API response
+        // Backend returns: { token, customer, message }
+        const customer = response.customer;
         const userSession = {
-          id: response.user.id,
-          email: response.user.email,
-          firstName: response.user.first_name,
-          lastName: response.user.last_name,
-          phone: response.user.phone,
-          points: response.user.points || 0,
-          vouchers: response.user.vouchers || [],
+          id: customer._id || customer.id,
+          email: customer.email,
+          username: customer.username,
+          fullName: customer.full_name,
+          firstName: customer.full_name ? customer.full_name.split(' ')[0] : '',
+          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : '',
+          phone: customer.phone || '',
+          points: customer.loyalty_points || 0,
+          deliveryAddress: customer.delivery_address || {},
           loginTime: new Date().toISOString()
         };
 
         // Save session to localStorage
         localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
 
-        this.successMessage = 'Account created successfully! Welcome to Ramyeon Corner!';
+        this.successMessage = response.message || 'Account created successfully! Welcome to Ramyeon Corner!';
 
         setTimeout(() => {
           this.$emit('signUpSuccess', userSession);
@@ -437,10 +442,14 @@ export default {
         console.error('SignUp error:', error);
         
         // Handle specific error messages from backend
-        if (error.email) {
-          this.errorMessage = `Email: ${error.email[0]}`;
+        if (error.error) {
+          this.errorMessage = error.error;
+        } else if (error.email) {
+          this.errorMessage = Array.isArray(error.email) ? `Email: ${error.email[0]}` : `Email: ${error.email}`;
         } else if (error.password) {
-          this.errorMessage = `Password: ${error.password[0]}`;
+          this.errorMessage = Array.isArray(error.password) ? `Password: ${error.password[0]}` : `Password: ${error.password}`;
+        } else if (error.username) {
+          this.errorMessage = Array.isArray(error.username) ? `Username: ${error.username[0]}` : `Username: ${error.username}`;
         } else if (error.message) {
           this.errorMessage = error.message;
         } else if (error.detail) {

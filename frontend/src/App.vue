@@ -1,25 +1,12 @@
 <template>
   <div id="app" :class="{ 'dark-mode': isDarkMode }">
-    <!-- Authentication Pages (Full Screen) -->
+    <!-- Authentication Pages (Full Screen with Sliding Animation) -->
     <template v-if="isAuthPage">
-      <transition name="slide" mode="out-in">
-        <div>
-          <Login
-            v-if="currentPage === 'Login'"
-            key="login"
-            @switchToSignUp="setCurrentPage('SignUp')"
-            @loginSuccess="handleAuthSuccess"
-            @backToHome="setCurrentPage('Home')"
-          />
-          <SignUp
-            v-if="currentPage === 'SignUp'"
-            key="signup"
-            @switchToLogin="setCurrentPage('Login')"
-            @signUpSuccess="handleAuthSuccess"
-            @backToHome="setCurrentPage('Home')"
-          />
-        </div>
-      </transition>
+      <Auth
+        @loginSuccess="handleAuthSuccess"
+        @signUpSuccess="handleAuthSuccess"
+        @backToHome="setCurrentPage('Home')"
+      />
     </template>
 
     <!-- Main App Layout -->
@@ -243,8 +230,7 @@ import AboutUs from './components/AboutUs.vue'
 import MenuPage from './components/Menu.vue'
 import ContactUs from './components/ContactUs.vue'
 import Promotions from './components/Promotions.vue'
-import Login from './components/Login.vue'
-import SignUp from './components/SignUp.vue'
+import Auth from './components/Auth.vue'
 import Profile from './components/Profile.vue'
 import ProfileSettings from './components/ProfileSettings.vue'
 import Settings from './components/Settings.vue'
@@ -258,8 +244,7 @@ export default {
     MenuPage,
     ContactUs,
     Promotions,
-    Login,
-    SignUp,
+    Auth,
     Profile,
     ProfileSettings,
     Settings,
