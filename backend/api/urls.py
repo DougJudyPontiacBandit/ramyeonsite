@@ -12,8 +12,23 @@ from api.views.auth_views import (
     customer_change_password
 )
 
+# Import new customer product and category views
+from api.views.customer_product_views import (
+    CustomerProductListView,
+    CustomerProductDetailView,
+    CustomerProductSearchView,
+    CustomerProductByCategoryView,
+    CustomerFeaturedProductsView
+)
+from api.views.customer_category_views import (
+    CustomerCategoryListView,
+    CustomerCategoryDetailView,
+    CustomerCategoryWithProductsView
+)
+
 # Create router and register viewsets
 router = DefaultRouter()
+
 # COMMENTED OUT - To be fixed later
 # router.register(r'categories', views.CategoryViewSet, basename='category')
 # router.register(r'products', views.ProductViewSet, basename='product')
@@ -35,7 +50,23 @@ urlpatterns = [
     path('auth/customer/register/', customer_register, name='customer-register'),
     path('auth/customer/me/', customer_me, name='customer-me'),
     path('auth/customer/password/change/', customer_change_password, name='customer-change-password'),
+   
+    # ========================================
+    # CUSTOMER PRODUCT ENDPOINTS (Read-Only)
+    # ========================================
+    path('customer/products/', CustomerProductListView.as_view(), name='customer-product-list'),
+    path('customer/products/featured/', CustomerFeaturedProductsView.as_view(), name='customer-featured-products'),
+    path('customer/products/search/', CustomerProductSearchView.as_view(), name='customer-product-search'),
+    path('customer/products/category/<str:category_id>/', CustomerProductByCategoryView.as_view(), name='customer-products-by-category'),
+    path('customer/products/<str:product_id>/', CustomerProductDetailView.as_view(), name='customer-product-detail'),
     
+    # ========================================
+    # CUSTOMER CATEGORY ENDPOINTS (Read-Only)
+    # ========================================
+    path('customer/categories/', CustomerCategoryListView.as_view(), name='customer-category-list'),
+    path('customer/categories/<str:category_id>/', CustomerCategoryDetailView.as_view(), name='customer-category-detail'),
+    path('customer/categories/<str:category_id>/products/', CustomerCategoryWithProductsView.as_view(), name='customer-category-products'),
+   
     # ========================================
     # OLD AUTH ENDPOINTS (users collection - commented out)
     # ========================================
@@ -44,19 +75,19 @@ urlpatterns = [
     # path('auth/logout/', views.logout_view, name='logout'),
     # path('auth/profile/', views.profile_view, name='profile'),
     # path('auth/profile/update/', views.update_profile_view, name='update-profile'),
-    
+   
     # ========================================
     # POINTS AND QR CODE ENDPOINTS (commented out)
     # ========================================
     # path('points/history/', views.get_points_history, name='points-history'),
     # path('qrcode/', views.get_user_qr_code, name='user-qr-code'),
-    
+   
     # ========================================
     # NEWSLETTER AND CONTACT (commented out)
     # ========================================
     # path('newsletter/subscribe/', views.subscribe_newsletter, name='subscribe-newsletter'),
     # path('contact/', views.contact_message, name='contact-message'),
-    
+   
     # ========================================
     # POS (Point of Sale) ENDPOINTS
     # ========================================
@@ -68,7 +99,7 @@ urlpatterns = [
     path('pos/user/<str:qr_code>/', pos_views.get_user_by_qr, name='pos-get-user'),
     path('pos/promotion/<str:qr_code>/', pos_views.get_promotion_by_qr, name='pos-get-promotion'),
     path('pos/dashboard/', pos_views.pos_dashboard, name='pos-dashboard'),
-    
+   
     # ========================================
     # ROUTER URLs (commented out)
     # ========================================
