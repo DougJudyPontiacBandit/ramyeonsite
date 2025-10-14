@@ -26,6 +26,18 @@ from api.views.customer_category_views import (
     CustomerCategoryWithProductsView
 )
 
+# Import customer promotion views
+from api.views.promotion_views import (
+    PromotionHealthCheckView,
+    PromotionListView,
+    PromotionDetailView,
+    ActivePromotionsView,
+    PromotionsByProductView,
+    PromotionsByCategoryView,
+    PromotionDiscountCalculatorView,
+    PromotionSearchView
+)
+
 # Create router and register viewsets
 router = DefaultRouter()
 
@@ -66,6 +78,18 @@ urlpatterns = [
     path('customer/categories/', CustomerCategoryListView.as_view(), name='customer-category-list'),
     path('customer/categories/<str:category_id>/', CustomerCategoryDetailView.as_view(), name='customer-category-detail'),
     path('customer/categories/<str:category_id>/products/', CustomerCategoryWithProductsView.as_view(), name='customer-category-products'),
+   
+    # ========================================
+    # CUSTOMER PROMOTION ENDPOINTS (Read-Only)
+    # ========================================
+    path('customer/promotions/health/', PromotionHealthCheckView.as_view(), name='promotion-health'),
+    path('customer/promotions/', PromotionListView.as_view(), name='customer-promotion-list'),
+    path('customer/promotions/active/', ActivePromotionsView.as_view(), name='customer-active-promotions'),
+    path('customer/promotions/search/', PromotionSearchView.as_view(), name='customer-promotion-search'),
+    path('customer/promotions/calculate-discount/', PromotionDiscountCalculatorView.as_view(), name='customer-calculate-discount'),
+    path('customer/promotions/product/<str:product_id>/', PromotionsByProductView.as_view(), name='customer-promotions-by-product'),
+    path('customer/promotions/category/<str:category_id>/', PromotionsByCategoryView.as_view(), name='customer-promotions-by-category'),
+    path('customer/promotions/<str:promotion_id>/', PromotionDetailView.as_view(), name='customer-promotion-detail'),
    
     # ========================================
     # OLD AUTH ENDPOINTS (users collection - commented out)
