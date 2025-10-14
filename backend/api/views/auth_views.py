@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 customer_service = CustomerAuthService()
 
+@csrf_exempt
 @api_view(['POST'])
 def customer_login(request):
     """Customer login endpoint"""
@@ -47,6 +48,7 @@ def customer_login(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@csrf_exempt
 @api_view(['POST'])
 def customer_register(request):
     """Customer registration endpoint"""
@@ -109,6 +111,7 @@ def customer_me(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@csrf_exempt
 @api_view(['POST'])
 @jwt_required
 def customer_change_password(request):

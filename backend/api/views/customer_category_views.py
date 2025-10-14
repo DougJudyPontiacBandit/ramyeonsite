@@ -1,11 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from ..services.customer_category_service import CustomerCategoryService
 import logging
 
 logger = logging.getLogger(__name__)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerCategoryListView(APIView):
     """
     GET /api/customer/categories/
@@ -40,6 +43,7 @@ class CustomerCategoryListView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerCategoryDetailView(APIView):
     """
     GET /api/customer/categories/<category_id>/
@@ -71,6 +75,7 @@ class CustomerCategoryDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerCategoryWithProductsView(APIView):
     """
     GET /api/customer/categories/<category_id>/products/

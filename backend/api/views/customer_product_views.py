@@ -1,11 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from ..services.customer_product_service import CustomerProductService
 import logging
 
 logger = logging.getLogger(__name__)
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerProductListView(APIView):
     """
     GET /api/customer/products/
@@ -83,6 +86,7 @@ class CustomerProductListView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerProductDetailView(APIView):
     """
     GET /api/customer/products/<product_id>/
@@ -114,6 +118,7 @@ class CustomerProductDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerProductSearchView(APIView):
     """
     GET /api/customer/products/search/
@@ -175,6 +180,7 @@ class CustomerProductSearchView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerProductByCategoryView(APIView):
     """
     GET /api/customer/products/category/<category_id>/
@@ -231,6 +237,7 @@ class CustomerProductByCategoryView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class CustomerFeaturedProductsView(APIView):
     """
     GET /api/customer/products/featured/

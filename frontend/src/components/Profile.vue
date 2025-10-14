@@ -3,8 +3,8 @@
     <div class="profile-content">
       <!-- Profile Header -->
       <div class="profile-header">
-        <div class="profile-avatar">
-          👤
+        <div class="profile-avatar" @mouseenter="avatarHover = true" @mouseleave="avatarHover = false">
+          {{ avatarHover ? '✨' : '👤' }}
         </div>
         <h1 class="profile-name">{{ user.firstName }} {{ user.lastName }}</h1>
         <p class="profile-email">{{ user.email }}</p>
@@ -17,23 +17,25 @@
           <div class="points-badge">
             <div class="points-circle">
               <div class="points-label">Total Points</div>
-              <div class="points-value">{{ user.points }}</div>
+              <div class="points-value" :key="user.points">{{ user.points }}</div>
               <div class="points-unit">pts</div>
             </div>
           </div>
           <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
-            See Promotions
+            <span>🎁</span> See Promotions
           </button>
         </div>
 
         <!-- Vouchers Section -->
         <div class="vouchers-section">
           <div class="section-header">
-            <h2 class="section-title">Get vouchers</h2>
-            <a href="#" class="see-all-btn" @click.prevent="showAllVouchers">See all</a>
+            <h2 class="section-title">{{ user.vouchers.length > 0 ? 'My Vouchers' : 'No Vouchers Yet' }}</h2>
+            <a v-if="user.vouchers.length > 2" href="#" class="see-all-btn" @click.prevent="showAllVouchers">
+              {{ showAllVouchersFlag ? 'Show Less' : 'See All' }}
+            </a>
           </div>
           
-          <div class="vouchers-grid">
+          <div v-if="user.vouchers.length > 0" class="vouchers-grid">
             <div 
               v-for="voucher in displayedVouchers" 
               :key="voucher.id"
@@ -47,6 +49,14 @@
               <p class="voucher-subtitle">{{ voucher.subtitle }}</p>
               <span class="voucher-discount">{{ voucher.discount }}</span>
             </div>
+          </div>
+          
+          <div v-else class="empty-vouchers">
+            <div class="empty-icon">🎫</div>
+            <p class="empty-text">Save vouchers from promotions to use them later!</p>
+            <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
+              Browse Promotions
+            </button>
           </div>
         </div>
 
@@ -85,6 +95,7 @@
       @close="closeVoucherModal"
       @useVoucher="handleUseVoucher"
       @saveVoucher="handleSaveVoucher"
+      @removeVoucher="handleRemoveVoucher"
     />
   </div>
 </template>
@@ -112,7 +123,8 @@ export default {
       showVoucherModal: false,
       selectedVoucher: {},
       showAllVouchersFlag: false,
-      isDarkMode: false
+      isDarkMode: false,
+      avatarHover: false
     }
   },
   computed: {
@@ -127,6 +139,7 @@ export default {
     this.loadUserData();
     this.loadDarkModePreference();
     this.fetchCurrentUser();
+    this.loadSavedVouchers();
   },
   methods: {
     loadUserData() {
@@ -136,6 +149,7 @@ export default {
         const userData = JSON.parse(userSession);
         this.user = {
           ...userData,
+          vouchers: [],
           pointsQRCode: userData.pointsQRCode || this.generatePointsQRCode()
         };
       } else {
@@ -145,28 +159,18 @@ export default {
           lastName: 'User',
           email: 'guest@ramyeoncorner.com',
           points: 3280,
-          vouchers: [
-            {
-              id: 1,
-              title: 'Shin Ramyun',
-              subtitle: 'Spicy Noodle',
-              discount: '20% OFF',
-              code: 'SHIN20',
-              qrCode: 'SHIN20-QR-' + Date.now()
-            },
-            {
-              id: 2,
-              title: 'Fish Cake',
-              subtitle: 'Side Dish',
-              discount: '15% OFF',
-              code: 'FISH15',
-              qrCode: 'FISH15-QR-' + Date.now()
-            }
-          ],
+          vouchers: [],
           pointsQRCode: this.generatePointsQRCode()
         };
       }
     },
+
+    loadSavedVouchers() {
+      // Load saved vouchers from localStorage
+      const savedVouchers = JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]');
+      this.user.vouchers = savedVouchers;
+    },
+
     async fetchCurrentUser() {
       try {
         const { authAPI } = await import('../services/api.js')
@@ -226,14 +230,30 @@ export default {
       // Remove voucher from user's vouchers (simulate usage)
       this.user.vouchers = this.user.vouchers.filter(v => v.id !== voucher.id);
       
-      // Update localStorage
-      this.updateUserSession();
+      // Update localStorage - remove from saved vouchers
+      const savedVouchers = JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]');
+      const updatedVouchers = savedVouchers.filter(v => v.id !== voucher.id);
+      localStorage.setItem('ramyeon_saved_vouchers', JSON.stringify(updatedVouchers));
     },
 
     handleSaveVoucher(voucher) {
       // Handle voucher saving
       console.log('Saving voucher:', voucher);
       this.showMessage('Voucher saved for later!', 'info');
+      
+      // Reload vouchers to reflect any changes
+      this.loadSavedVouchers();
+    },
+
+    handleRemoveVoucher(voucher) {
+      // Handle voucher removal
+      console.log('Removing voucher:', voucher);
+      
+      // Remove from UI
+      this.user.vouchers = this.user.vouchers.filter(v => v.id !== voucher.id);
+      
+      // Show success message
+      this.showMessage('Voucher removed!', 'info');
     },
 
     showAllVouchers() {
@@ -304,7 +324,7 @@ export default {
 <style src="./Profile.css" scoped></style>
 
 <style scoped>
-/* Additional component-specific styles */
+/* Additional futuristic animations */
 @keyframes slideInRight {
   from {
     opacity: 0;
@@ -327,74 +347,72 @@ export default {
   }
 }
 
-/* Enhanced voucher card hover effects */
-.voucher-card {
-  position: relative;
-  overflow: hidden;
+/* Message notifications with neon effect */
+.message {
+  padding: 18px 25px;
+  border-radius: 15px;
+  font-weight: 600;
+  backdrop-filter: blur(20px);
+  border: 1px solid;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
-.voucher-card::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s;
+.message.success {
+  background: rgba(40, 167, 69, 0.2);
+  color: #00ff88;
+  border-color: rgba(0, 255, 136, 0.4);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
 }
 
-.voucher-card:hover::after {
-  left: 100%;
+.message.error {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ff4757;
+  border-color: rgba(255, 71, 87, 0.4);
+  text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
 }
 
-/* Points circle enhanced animation */
-.points-circle {
-  position: relative;
-  overflow: hidden;
+.message.info {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+  border-color: rgba(102, 126, 234, 0.4);
+  text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
 }
 
-.points-circle::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, #ff4757, #ff3742, #ff4757, #ff3742);
-  border-radius: 50%;
-  z-index: -1;
-  animation: borderRotate 3s linear infinite;
+/* Glowing text effect for hover */
+.promotions-btn span {
+  display: inline-block;
+  margin-right: 8px;
+  animation: iconSpin 3s linear infinite;
 }
 
-@keyframes borderRotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+@keyframes iconSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Responsive enhancements */
 @media (max-width: 480px) {
   .voucher-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
+    width: 60px;
+    height: 60px;
+    font-size: 1.8rem;
   }
   
   .voucher-title {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
   
   .voucher-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
   
   .voucher-discount {
-    font-size: 0.8rem;
-    padding: 6px 12px;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+  }
+  
+  .empty-icon {
+    font-size: 4rem;
   }
 }
 </style>

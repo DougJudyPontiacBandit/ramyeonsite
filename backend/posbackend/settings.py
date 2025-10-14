@@ -156,11 +156,14 @@ REST_FRAMEWORK = {
     ]
 }
 
-# CORS settings
-CORS_ALLOWED_ORIGINS = config(
-    'CORS_ALLOWED_ORIGINS', 
-    default='http://localhost:8080,http://127.0.0.1:8080'
-).split(',')
+# CORS settings - Allow all origins in development
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = config(
+        'CORS_ALLOWED_ORIGINS', 
+        default='http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8081'
+    ).split(',')
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -185,6 +188,9 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
+# Additional CORS settings for preflight requests
+CORS_PREFLIGHT_MAX_AGE = 86400  # 24 hours
+
 # JWT Settings
 JWT_SECRET_KEY = config('JWT_SECRET_KEY', default=SECRET_KEY)
 JWT_ALGORITHM = config('JWT_ALGORITHM', default='HS256')
@@ -192,7 +198,7 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES = config('JWT_ACCESS_TOKEN_EXPIRE_MINUTES', defa
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = config('JWT_REFRESH_TOKEN_EXPIRE_DAYS', default=7, cast=int)
 
 # Frontend URL
-FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:8080')
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:5173')
 
 # Email Configuration
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')

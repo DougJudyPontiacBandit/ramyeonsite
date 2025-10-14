@@ -29,19 +29,6 @@ from api.views.customer_category_views import (
 # Create router and register viewsets
 router = DefaultRouter()
 
-# COMMENTED OUT - To be fixed later
-# router.register(r'categories', views.CategoryViewSet, basename='category')
-# router.register(r'products', views.ProductViewSet, basename='product')
-# router.register(r'vouchers', views.VoucherViewSet, basename='voucher')
-# router.register(r'promotions', views.PromotionViewSet, basename='promotion')
-# router.register(r'cart', views.CartViewSet, basename='cart')
-# router.register(r'orders', views.OrderViewSet, basename='order')
-# router.register(r'user-vouchers', views.UserVoucherViewSet, basename='user-voucher')
-# router.register(r'loyalty-rewards', views.LoyaltyRewardViewSet, basename='loyalty-reward')
-# router.register(r'user-rewards', views.UserRewardViewSet, basename='user-reward')
-# router.register(r'points-transactions', views.PointsTransactionViewSet, basename='points-transaction')
-# router.register(r'promotion-redemptions', views.PromotionRedemptionViewSet, basename='promotion-redemption')
-
 urlpatterns = [
     # ========================================
     # NEW CUSTOMER AUTH ENDPOINTS (customers collection)
@@ -66,28 +53,7 @@ urlpatterns = [
     path('customer/categories/', CustomerCategoryListView.as_view(), name='customer-category-list'),
     path('customer/categories/<str:category_id>/', CustomerCategoryDetailView.as_view(), name='customer-category-detail'),
     path('customer/categories/<str:category_id>/products/', CustomerCategoryWithProductsView.as_view(), name='customer-category-products'),
-   
-    # ========================================
-    # OLD AUTH ENDPOINTS (users collection - commented out)
-    # ========================================
-    # path('auth/register/', mongodb_views.register_mongodb, name='register'),
-    # path('auth/login/', mongodb_views.login_mongodb, name='login'),
-    # path('auth/logout/', views.logout_view, name='logout'),
-    # path('auth/profile/', views.profile_view, name='profile'),
-    # path('auth/profile/update/', views.update_profile_view, name='update-profile'),
-   
-    # ========================================
-    # POINTS AND QR CODE ENDPOINTS (commented out)
-    # ========================================
-    # path('points/history/', views.get_points_history, name='points-history'),
-    # path('qrcode/', views.get_user_qr_code, name='user-qr-code'),
-   
-    # ========================================
-    # NEWSLETTER AND CONTACT (commented out)
-    # ========================================
-    # path('newsletter/subscribe/', views.subscribe_newsletter, name='subscribe-newsletter'),
-    # path('contact/', views.contact_message, name='contact-message'),
-   
+    
     # ========================================
     # POS (Point of Sale) ENDPOINTS
     # ========================================

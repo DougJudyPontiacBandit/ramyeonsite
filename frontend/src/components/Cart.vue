@@ -93,6 +93,7 @@
           
           <!-- Google Map -->
           <div class="map-container" v-if="showMap">
+            <p class="map-instructions">📍 Click anywhere on the map to set your delivery location</p>
             <div id="google-map" class="google-map"></div>
             <button class="close-map-btn" @click="closeMap">Close Map</button>
           </div>
@@ -236,36 +237,156 @@ export default {
     removeItem(itemId) {
       this.cartItems = this.cartItems.filter(item => item.id !== itemId);
     },
-    openMap() {
+    async openMap() {
       this.showMap = true;
+      
+      // Load Google Maps script dynamically
+      if (!window.google) {
+        try {
+          await this.loadGoogleMapsScript();
+        } catch (error) {
+          console.error('Failed to load Google Maps:', error);
+          alert('Unable to load Google Maps. Please check:\n1. Internet connection\n2. API key is valid\n3. Billing is enabled in Google Cloud Console\n\nYou can manually enter your address instead.');
+          this.closeMap();
+          return;
+        }
+      }
+      
       this.$nextTick(() => {
         this.initializeMap();
+      });
+    },
+    loadGoogleMapsScript() {
+      return new Promise((resolve, reject) => {
+        if (window.google) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAmv6-w1GHQ7Z4Y7c_iOlr17iw6Z6pnmC0&libraries=places&callback=initMap';
+        script.async = true;
+        script.defer = true;
+        
+        window.initMap = () => {
+          resolve();
+          delete window.initMap;
+        };
+        
+        script.onerror = () => {
+          reject(new Error('Failed to load Google Maps script'));
+        };
+        
+        document.head.appendChild(script);
       });
     },
     closeMap() {
       this.showMap = false;
     },
     initializeMap() {
-      // Initialize Google Map (placeholder for now)
       const mapElement = document.getElementById('google-map');
-      if (mapElement) {
-        // This would be replaced with actual Google Maps API integration
-        mapElement.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; border-radius: 10px;">
-            <div style="text-align: center;">
-              <div style="font-size: 2rem; margin-bottom: 10px;">🗺️</div>
-              <p>Google Maps Integration</p>
-              <p style="font-size: 0.9rem; color: #666;">Click on the map to select your delivery location</p>
-            </div>
-          </div>
-        `;
-        
-        // Simulate map click to set address
-        mapElement.addEventListener('click', () => {
-          this.deliveryAddress = 'Purok I, Castillo, Mangagoy, Bislig, Philippines';
-          this.closeMap();
-        });
+      if (!mapElement || !window.google) {
+        console.error('Google Maps not loaded or map element not found');
+        alert('Unable to load Google Maps. Please check your internet connection and try again.');
+        this.closeMap();
+        return;
       }
+
+      try {
+        // Default center (Philippines - you can change this to your preferred location)
+        const defaultCenter = { lat: 8.1837, lng: 126.3162 }; // Bislig City, Philippines
+        
+        // Initialize the map
+        this.map = new window.google.maps.Map(mapElement, {
+          center: defaultCenter,
+          zoom: 13,
+          mapTypeControl: true,
+          streetViewControl: false,
+          fullscreenControl: false,
+          mapId: 'DEMO_MAP_ID' // Required for advanced features
+        });
+
+        // Try to get user's current location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+              };
+              this.map.setCenter(userLocation);
+              this.placeMarker(userLocation);
+            },
+            (error) => {
+              console.log('Geolocation error:', error);
+              // If geolocation fails, use default location
+              this.placeMarker(defaultCenter);
+            }
+          );
+        } else {
+          // Browser doesn't support geolocation
+          this.placeMarker(defaultCenter);
+        }
+
+        // Add click listener to map
+        this.map.addListener('click', (event) => {
+          this.placeMarker(event.latLng);
+        });
+      } catch (error) {
+        console.error('Map initialization error:', error);
+        
+        // Check if it's a billing error
+        if (error.message && error.message.includes('Billing')) {
+          alert('⚠️ Google Maps API Error: Billing is not enabled.\n\nPlease enable billing for this API key in Google Cloud Console:\n1. Go to console.cloud.google.com\n2. Select your project\n3. Enable billing\n4. Enable Maps JavaScript API');
+        } else {
+          alert('Unable to initialize Google Maps. Error: ' + error.message);
+        }
+        this.closeMap();
+      }
+    },
+    placeMarker(location) {
+      // Remove existing marker if any
+      if (this.marker) {
+        this.marker.setMap(null);
+      }
+
+      // Create new marker
+      this.marker = new window.google.maps.Marker({
+        position: location,
+        map: this.map,
+        animation: window.google.maps.Animation.DROP,
+        title: 'Delivery Location'
+      });
+
+      // Get address from coordinates using Geocoding
+      this.getAddressFromCoordinates(location);
+    },
+    getAddressFromCoordinates(location) {
+      const geocoder = new window.google.maps.Geocoder();
+      const latLng = {
+        lat: typeof location.lat === 'function' ? location.lat() : location.lat,
+        lng: typeof location.lng === 'function' ? location.lng() : location.lng
+      };
+
+      geocoder.geocode({ location: latLng }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          this.deliveryAddress = results[0].formatted_address;
+          
+          // Optionally show an info window
+          if (this.marker) {
+            const infoWindow = new window.google.maps.InfoWindow({
+              content: `<div style="padding: 10px;">
+                <strong>Selected Location:</strong><br/>
+                ${results[0].formatted_address}
+              </div>`
+            });
+            infoWindow.open(this.map, this.marker);
+          }
+        } else {
+          console.error('Geocoder failed:', status);
+          alert('Unable to get address for this location. Please try another location.');
+        }
+      });
     },
     async proceedToCheckout() {
       if (!this.canCheckout) return;
@@ -638,11 +759,23 @@ export default {
   position: relative;
 }
 
+.map-instructions {
+  color: #666;
+  font-size: 0.95rem;
+  margin-bottom: 15px;
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border-left: 3px solid #ff4757;
+}
+
 .google-map {
-  height: 300px;
+  height: 400px;
+  width: 100%;
   border-radius: 15px;
   overflow: hidden;
   cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .close-map-btn {

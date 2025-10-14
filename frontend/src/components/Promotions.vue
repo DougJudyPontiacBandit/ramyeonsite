@@ -18,8 +18,8 @@
               </div>
               <div class="flash-sale-actions">
                 <button class="order-btn" @click.stop="handlePromotionClick('FLASH30', 'Flash Sale')">Order Now</button>
-                <button v-if="isLoggedIn" class="save-promotion-btn" @click.stop="savePromotion('FLASH30', 'Flash Sale', '30% OFF')" :disabled="isSaving">
-                  <span v-if="!isSaving">💾 Save</span>
+                <button v-if="isLoggedIn" class="save-promotion-btn" @click.stop="savePromotion('FLASH30', 'Flash Sale', '30% OFF')" :disabled="isSaving('FLASH30')">
+                  <span v-if="!isSaving('FLASH30')">💾 Save</span>
                   <span v-else>⏳ Saving...</span>
                 </button>
               </div>
@@ -44,8 +44,8 @@
             <div class="food-info">
               <h3 class="food-name">{{ item.name }}</h3>
               <p class="food-price">{{ item.price }}</p>
-              <button v-if="isLoggedIn" class="save-item-btn" @click.stop="savePromotion(item.code, item.name, item.discount || 'Special Offer')" :disabled="isSaving">
-                <span v-if="!isSaving">💾 Save</span>
+              <button v-if="isLoggedIn" class="save-item-btn" @click.stop="savePromotion(item.code, item.name, item.discount || 'Special Offer')" :disabled="isSaving(item.code)">
+                <span v-if="!isSaving(item.code)">💾 Save</span>
                 <span v-else>⏳</span>
               </button>
             </div>
@@ -80,8 +80,8 @@
             <div class="food-info">
               <h3 class="food-name">{{ item.name }}</h3>
               <p class="food-price">{{ item.price }}</p>
-              <button v-if="isLoggedIn" class="save-item-btn" @click.stop="savePromotion(item.code, item.name, item.discount || 'Special Offer')" :disabled="isSaving">
-                <span v-if="!isSaving">💾 Save</span>
+              <button v-if="isLoggedIn" class="save-item-btn" @click.stop="savePromotion(item.code, item.name, item.discount || 'Special Offer')" :disabled="isSaving(item.code)">
+                <span v-if="!isSaving(item.code)">💾 Save</span>
                 <span v-else>⏳</span>
               </button>
             </div>
@@ -103,8 +103,8 @@
               <div class="summer-offer-icon">🎁</div>
             </div>
             <button class="order-btn-red" @click.stop="handlePromotionClick('SUMMER40', 'Summer Special')">ORDER</button>
-            <button v-if="isLoggedIn" class="save-offer-btn" @click.stop="savePromotion('SUMMER40', 'Summer Special', '40% OFF')" :disabled="isSaving">
-              <span v-if="!isSaving">💾 Save</span>
+            <button v-if="isLoggedIn" class="save-offer-btn" @click.stop="savePromotion('SUMMER40', 'Summer Special', '40% OFF')" :disabled="isSaving('SUMMER40')">
+              <span v-if="!isSaving('SUMMER40')">💾 Save</span>
               <span v-else>⏳</span>
             </button>
           </div>
@@ -119,8 +119,8 @@
                   <div class="voucher-title">STORE VOUCHER</div>
                 </div>
               </div>
-              <button v-if="isLoggedIn" class="save-voucher-btn" @click.stop="savePromotion('STORE10', 'Store Voucher', '₱ 10 OFF')" :disabled="isSaving">
-                <span v-if="!isSaving">💾 Save</span>
+              <button v-if="isLoggedIn" class="save-voucher-btn" @click.stop="savePromotion('STORE10', 'Store Voucher', '₱ 10 OFF')" :disabled="isSaving('STORE10')">
+                <span v-if="!isSaving('STORE10')">💾 Save</span>
                 <span v-else>⏳</span>
               </button>
             </div>
@@ -132,8 +132,8 @@
                   <div class="voucher-title">DELIVERY VOUCHER</div>
                 </div>
               </div>
-              <button v-if="isLoggedIn" class="save-voucher-btn" @click.stop="savePromotion('DELIVERY20', 'Delivery Voucher', '₱ 20 OFF')" :disabled="isSaving">
-                <span v-if="!isSaving">💾 Save</span>
+              <button v-if="isLoggedIn" class="save-voucher-btn" @click.stop="savePromotion('DELIVERY20', 'Delivery Voucher', '₱ 20 OFF')" :disabled="isSaving('DELIVERY20')">
+                <span v-if="!isSaving('DELIVERY20')">💾 Save</span>
                 <span v-else>⏳</span>
               </button>
             </div>
@@ -176,7 +176,7 @@ export default {
       modalTitle: '',
       currentCode: '',
       isTextCode: false,
-      isSaving: false,
+      savingPromotions: {}, // Track which promotions are being saved
       ramyeonHero: require('@/assets/food/ramyeon-hero.jpg'),
       topItems: [
         {
@@ -237,6 +237,9 @@ export default {
       }
       this.showPromoCode(code, title)
     },
+    isSaving(code) {
+      return this.savingPromotions[code] === true
+    },
     async showPromoCode(code, title) {
       this.currentCode = code
       this.modalTitle = title
@@ -279,11 +282,26 @@ export default {
         return
       }
 
-      this.isSaving = true
+      // Check if already saving this promotion
+      if (this.savingPromotions[code]) {
+        return
+      }
+
+      // Set saving state for this specific promotion
+      this.$set(this.savingPromotions, code, true)
 
       try {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1500))
+
+        // Check if already saved
+        const savedVouchers = JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]')
+        const exists = savedVouchers.find(v => v.code === code)
+        
+        if (exists) {
+          this.showErrorMessage('This promotion is already saved!')
+          return
+        }
 
         // Create promotion voucher object
         const promotionVoucher = {
@@ -298,14 +316,8 @@ export default {
         }
 
         // Save to localStorage
-        const savedVouchers = JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]')
-
-        // Check if already saved
-        const exists = savedVouchers.find(v => v.code === code)
-        if (!exists) {
-          savedVouchers.push(promotionVoucher)
-          localStorage.setItem('ramyeon_saved_vouchers', JSON.stringify(savedVouchers))
-        }
+        savedVouchers.push(promotionVoucher)
+        localStorage.setItem('ramyeon_saved_vouchers', JSON.stringify(savedVouchers))
 
         // Show success message
         this.showSuccessMessage('Promotion saved! Redirecting to profile...')
@@ -319,7 +331,8 @@ export default {
         console.error('Error saving promotion:', error)
         this.showErrorMessage('Failed to save promotion. Please try again.')
       } finally {
-        this.isSaving = false
+        // Clear saving state for this specific promotion
+        this.$set(this.savingPromotions, code, false)
       }
     },
 
