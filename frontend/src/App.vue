@@ -80,7 +80,9 @@
       <Profile v-if="currentPage === 'Profile'" @setCurrentPage="setCurrentPage" />
       <ProfileSettings v-if="currentPage === 'ProfileSettings'" @setCurrentPage="setCurrentPage" />
       <Settings v-if="currentPage === 'Settings'" @setCurrentPage="setCurrentPage" />
-      <Cart v-if="currentPage === 'Cart'" @setCurrentPage="setCurrentPage" />
+      <Cart v-if="currentPage === 'Cart'" @setCurrentPage="setCurrentPage" :key="cartKey" />
+      <OrderHistory v-if="currentPage === 'OrderHistory'" @setCurrentPage="setCurrentPage" :key="orderHistoryKey" />
+      <PaymentHistory v-if="currentPage === 'PaymentHistory'" @setCurrentPage="setCurrentPage" :key="paymentHistoryKey" />
 
       <!-- Sign Out Confirmation Modal -->
       <div v-if="showSignOutModal" class="signout-modal-overlay" @click="cancelSignOut">
@@ -198,23 +200,24 @@
         </div>
       </div>
 
+      <!-- Social Media Icons (Outside Bottom Footer) -->
+      <div class="footer-social">
+        <a href="#" aria-label="Facebook" class="social-link">
+          <img src="./assets/Nav Bar/fb.png" alt="Facebook" class="social-icon-img">
+        </a>
+        <a href="#" aria-label="Instagram" class="social-link">
+          <img src="./assets/Nav Bar/ig.png" alt="Instagram" class="social-icon-img">
+        </a>
+        <a href="#" aria-label="Twitter" class="social-link">
+          <img src="./assets/Nav Bar/twt.png" alt="Twitter" class="social-icon-img">
+        </a>
+        <a href="#" aria-label="GitHub" class="social-link">
+          <img src="./assets/Nav Bar/git.png" alt="GitHub" class="social-icon-img">
+        </a>
+      </div>
+
       <!-- Copyright Section -->
       <div class="footer-bottom">
-        <!-- Social Media Icons -->
-        <div class="footer-social">
-          <a href="#" aria-label="Facebook" class="social-link">
-            <img src="./assets/Nav Bar/fb.png" alt="Facebook" class="social-icon-img">
-          </a>
-          <a href="#" aria-label="Instagram" class="social-link">
-            <img src="./assets/Nav Bar/ig.png" alt="Instagram" class="social-icon-img">
-          </a>
-          <a href="#" aria-label="Twitter" class="social-link">
-            <img src="./assets/Nav Bar/twt.png" alt="Twitter" class="social-icon-img">
-          </a>
-          <a href="#" aria-label="GitHub" class="social-link">
-            <img src="./assets/Nav Bar/git.png" alt="GitHub" class="social-icon-img">
-          </a>
-        </div>
         <div class="footer-bottom-content">
           <p>&copy; 2025 Ramyeon Corner. All rights reserved.</p>
         </div>
@@ -235,6 +238,8 @@ import Profile from './components/Profile.vue'
 import ProfileSettings from './components/ProfileSettings.vue'
 import Settings from './components/Settings.vue'
 import Cart from './components/Cart.vue'
+import OrderHistory from './components/OrderHistory.vue'
+import PaymentHistory from './components/PaymentHistory.vue'
 
 export default {
   name: 'App',
@@ -248,7 +253,9 @@ export default {
     Profile,
     ProfileSettings,
     Settings,
-    Cart
+    Cart,
+    OrderHistory,
+    PaymentHistory
   },
   data() {
     return {
@@ -260,7 +267,10 @@ export default {
       subscriptionError: '',
       subscriptionSuccess: '',
       isSubscribing: false,
-      showSignOutModal: false
+      showSignOutModal: false,
+      cartKey: 0,
+      orderHistoryKey: 0,
+      paymentHistoryKey: 0
     }
   },
   computed: {
@@ -278,13 +288,97 @@ export default {
     }
   },
   mounted() {
+    // Check URL hash to determine initial page (important for PayMongo redirects!)
+    this.checkURLHash();
+    
     this.checkUserSession();
     this.loadDarkModePreference();
     this.loadCartItems();
   },
   methods: {
+    checkURLHash() {
+      // Parse the URL hash to determine which page to show
+      // This is CRITICAL for PayMongo redirects like #/cart?payment=success
+      console.log('🔍 Checking URL hash:', window.location.hash);
+      
+      const hash = window.location.hash;
+      
+      if (!hash || hash === '#/' || hash === '#') {
+        console.log('ℹ️ No hash or home hash, staying on Home');
+        this.currentPage = 'Home';
+        return;
+      }
+      
+      // Extract the page name from hash
+      // Format can be: #/cart or #/cart?payment=success&order=...
+      let pageName = hash.replace('#/', '').split('?')[0];
+      
+      console.log('📄 Extracted page name from hash:', pageName);
+      
+      // Map hash names to component names
+      const pageMap = {
+        'cart': 'Cart',
+        'menu': 'Menu',
+        'about': 'About',
+        'promotions': 'Promotions',
+        'contact': 'Contact',
+        'profile': 'Profile',
+        'login': 'Login',
+        'signup': 'SignUp',
+        'order-history': 'OrderHistory',
+        'payment-history': 'PaymentHistory',
+        'settings': 'Settings',
+        'profile-settings': 'ProfileSettings'
+      };
+      
+      const mappedPage = pageMap[pageName.toLowerCase()];
+      
+      if (mappedPage) {
+        console.log('✅ Setting page to:', mappedPage);
+        this.currentPage = mappedPage;
+      } else {
+        console.log('⚠️ Unknown page in hash, defaulting to Home');
+        this.currentPage = 'Home';
+      }
+    },
+    
     setCurrentPage(page) {
       this.currentPage = page;
+      
+      // Update URL hash when page changes
+      const hashMap = {
+        'Home': '',
+        'Cart': 'cart',
+        'Menu': 'menu',
+        'About': 'about',
+        'Promotions': 'promotions',
+        'Contact': 'contact',
+        'Profile': 'profile',
+        'Login': 'login',
+        'SignUp': 'signup',
+        'OrderHistory': 'order-history',
+        'PaymentHistory': 'payment-history',
+        'Settings': 'settings',
+        'ProfileSettings': 'profile-settings'
+      };
+      
+      const hashName = hashMap[page];
+      if (hashName !== undefined) {
+        // Don't update hash if we're already on a page with query params (like payment returns)
+        if (!window.location.hash.includes('?')) {
+          window.location.hash = hashName ? `#/${hashName}` : '#/';
+        }
+      }
+      
+      // Force reload of certain components when navigating to them
+      if (page === 'OrderHistory') {
+        this.orderHistoryKey++;
+        console.log('📦 Forcing OrderHistory reload');
+      } else if (page === 'PaymentHistory') {
+        this.paymentHistoryKey++;
+      } else if (page === 'Cart') {
+        this.cartKey++;
+      }
     },
     
     addToCart(product) {
@@ -505,6 +599,7 @@ export default {
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+@import './assets/EnhancedFooter.css';
 
 /* User Menu Styles */
 .user-menu {

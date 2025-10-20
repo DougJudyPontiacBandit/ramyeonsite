@@ -177,7 +177,8 @@ export default {
         if (response.success && response.data) {
           // Map products to component format
           this.products = (response.data.products || []).map(product => ({
-            id: product.product_id,
+            // Use product_id, or fallback to _id, or id (MongoDB uses _id)
+            id: product.product_id || product._id || product.id,
             name: product.product_name,
             price: parseFloat(product.selling_price),
             description: product.description || 'No description available',

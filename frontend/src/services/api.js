@@ -107,6 +107,16 @@ export const authAPI = {
       throw error.response?.data || { message: 'Failed to change password' };
     }
   },
+
+  // Update customer profile
+  updateProfile: async (profileData) => {
+    try {
+      const response = await apiClient.put('/auth/customer/profile/update/', profileData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update profile' };
+    }
+  },
 };
 
 // POS API - Connected to /api/pos/* endpoints (for cashier operations)
@@ -270,23 +280,51 @@ export const cartAPI = {
   },
 };
 
-// Orders API (Currently commented out in backend)
+// Orders API - Connected to /kpi/cart/checkout/ endpoint
 export const ordersAPI = {
+  // Get all orders for current user
   getAll: async () => {
-    console.warn('Orders API not yet implemented in backend');
-    return { results: [] };
+    try {
+      // This would typically be a dedicated orders endpoint
+      // For now, return from localStorage as fallback
+      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
+      return { results: orders };
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      return { results: [] };
+    }
   },
 
-  // eslint-disable-next-line no-unused-vars
+  // Create new order via cart checkout
   create: async (orderData) => {
-    console.warn('Orders API not yet implemented in backend');
-    return { message: 'Orders API not available' };
+    try {
+      const response = await apiClient.post('/cart/checkout/', {
+        delivery_type: orderData.deliveryType,
+        delivery_address: orderData.deliveryAddress,
+        payment_method: orderData.paymentMethod,
+        special_instructions: orderData.specialInstructions,
+        payment_reference: orderData.paymentReference, // PayMongo reference
+        payment_status: orderData.paymentStatus || 'pending',
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Order creation error:', error);
+      throw error.response?.data || { message: 'Failed to create order' };
+    }
   },
 
-  // eslint-disable-next-line no-unused-vars
+  // Get order by ID
   getById: async (id) => {
-    console.warn('Orders API not yet implemented in backend');
-    return null;
+    try {
+      // This would typically be a dedicated endpoint
+      // For now, search in localStorage as fallback
+      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
+      return orders.find(order => order.id === id) || null;
+    } catch (error) {
+      console.error('Failed to fetch order:', error);
+      return null;
+    }
   },
 };
 

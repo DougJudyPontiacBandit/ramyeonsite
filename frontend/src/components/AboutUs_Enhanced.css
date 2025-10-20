@@ -150,15 +150,16 @@
 
 .contact-info {
   background: transparent;
-  margin-top: 0;
+  margin: 0 auto;
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(3, 300px);
+  grid-template-columns: repeat(3, 1fr);
   gap: 30px;
   text-align: center;
   width: 100%;
   max-width: 1000px;
+  justify-items: center;
 }
 
 .contact-item {
@@ -171,6 +172,8 @@
   position: relative;
   overflow: hidden;
   height: 250px;
+  width: 100%;
+  max-width: 320px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -311,11 +314,13 @@
 .story-section {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 100px;
-  margin: 140px 0;
+  margin: 140px auto;
   position: relative;
   max-width: 1200px;
   width: 100%;
+  padding: 0 30px;
   opacity: 0;
   animation: fadeIn 1s ease-out forwards;
 }
@@ -625,6 +630,8 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 60px;
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
   justify-items: center;
 }
 
@@ -783,27 +790,32 @@
 
   .contact-info {
     grid-template-columns: 1fr;
-    margin-top: 40px;
+    margin: 40px auto 0 auto;
     gap: 20px;
+    padding: 0 20px;
   }
 
   .contact-item {
     padding: 25px 20px;
+    max-width: 100%;
   }
 
   .story-section {
     flex-direction: column;
     gap: 40px;
-    margin: 80px 0;
+    margin: 80px auto;
+    padding: 0 20px;
   }
 
   .story-content {
     text-align: center;
+    width: 100%;
   }
 
   .story-image {
     max-width: 100%;
     margin: 0 auto;
+    width: 100%;
   }
 
   .story-image::before {
@@ -830,6 +842,7 @@
   .stats-container {
     grid-template-columns: repeat(2, 1fr);
     gap: 30px;
+    justify-items: center;
   }
 }
 
@@ -839,12 +852,14 @@
   }
 
   .contact-info {
-    margin-top: 30px;
+    margin: 30px auto 0 auto;
     gap: 15px;
+    padding: 0 15px;
   }
 
   .contact-item {
     padding: 20px 15px;
+    max-width: 100%;
   }
 
   .story-content h2 {
@@ -857,10 +872,13 @@
 
   .stats-container {
     grid-template-columns: 1fr;
+    justify-items: center;
+    max-width: 400px;
   }
 
   .stat-item {
     padding: 40px 25px;
+    width: 100%;
   }
 
   .testimonial-card {

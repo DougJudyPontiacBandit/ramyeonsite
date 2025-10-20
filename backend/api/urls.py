@@ -9,7 +9,8 @@ from api.views.auth_views import (
     customer_login,
     customer_register,
     customer_me,
-    customer_change_password
+    customer_change_password,
+    customer_update_profile
 )
 
 # Import new customer product and category views
@@ -38,6 +39,16 @@ from api.views.promotion_views import (
     PromotionSearchView
 )
 
+# Import loyalty points views
+from api.views.loyalty_views import (
+    get_loyalty_balance,
+    get_loyalty_history,
+    validate_points_redemption,
+    redeem_points,
+    award_points,
+    loyalty_health_check
+)
+
 # Create router and register viewsets
 router = DefaultRouter()
 
@@ -48,6 +59,7 @@ urlpatterns = [
     path('auth/customer/login/', customer_login, name='customer-login'),
     path('auth/customer/register/', customer_register, name='customer-register'),
     path('auth/customer/me/', customer_me, name='customer-me'),
+    path('auth/customer/profile/update/', customer_update_profile, name='customer-update-profile'),
     path('auth/customer/password/change/', customer_change_password, name='customer-change-password'),
    
     # ========================================
@@ -77,6 +89,16 @@ urlpatterns = [
     path('customer/promotions/product/<str:product_id>/', PromotionsByProductView.as_view(), name='customer-promotions-by-product'),
     path('customer/promotions/category/<str:category_id>/', PromotionsByCategoryView.as_view(), name='customer-promotions-by-category'),
     path('customer/promotions/<str:promotion_id>/', PromotionDetailView.as_view(), name='customer-promotion-detail'),
+   
+    # ========================================
+    # CUSTOMER LOYALTY POINTS ENDPOINTS
+    # ========================================
+    path('customer/loyalty/balance/', get_loyalty_balance, name='customer-loyalty-balance'),
+    path('customer/loyalty/history/', get_loyalty_history, name='customer-loyalty-history'),
+    path('customer/loyalty/validate-redemption/', validate_points_redemption, name='customer-validate-redemption'),
+    path('customer/loyalty/redeem/', redeem_points, name='customer-redeem-points'),
+    path('customer/loyalty/award/', award_points, name='customer-award-points'),
+    path('customer/loyalty/health/', loyalty_health_check, name='customer-loyalty-health'),
    
     # ========================================
     # OLD AUTH ENDPOINTS (users collection - commented out)

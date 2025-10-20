@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ramyeon Debug Tool</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .panel {
+      background: white;
+      border-radius: 15px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #ff4757;
+      margin-bottom: 10px;
+    }
+    button {
+      background: linear-gradient(135deg, #ff4757, #ff3742);
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.3s ease;
+    }
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(255, 71, 87, 0.3);
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    .info {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .success {
+      background: #e8f5e9;
+      border-left: 4px solid #4caf50;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    .warning {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 5px;
+    }
+    #output {
+      background: #263238;
+      color: #aed581;
+      padding: 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>🛠️ Ramyeon Debug Tool</h1>
+    <p>Use this tool to fix cart and order issues</p>
+  </div>
+
+  <div class="panel">
+    <h2>🧹 Clean Slate</h2>
+    <div class="warning">
+      <strong>⚠️ This will clear ALL stored data!</strong><br>
+      Use this if you have stuck cart items or old orders showing up
+    </div>
+    <button onclick="clearAllData()">🧹 Clear All Data & Refresh</button>
+  </div>
+
+  <div class="panel">
+    <h2>🔍 Inspect Data</h2>
+    <button onclick="showCart()">📦 Show Cart</button>
+    <button onclick="showOrders()">📋 Show Orders</button>
+    <button onclick="showPending()">⏳ Show Pending Orders</button>
+    <button onclick="showAll()">🔍 Show All Ramyeon Data</button>
+  </div>
+
+  <div class="panel">
+    <h2>🎯 Specific Fixes</h2>
+    <button onclick="clearCart()">Clear Cart Only</button>
+    <button onclick="clearOrders()">Clear Orders Only</button>
+    <button onclick="clearPending()">Clear Pending Only</button>
+  </div>
+
+  <div class="panel">
+    <h2>📊 Output</h2>
+    <button class="secondary" onclick="clearOutput()">Clear Output</button>
+    <div id="output">Ready...</div>
+  </div>
+
+  <script>
+    function log(msg) {
+      const output = document.getElementById('output');
+      output.textContent += '\n' + msg;
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function clearOutput() {
+      document.getElementById('output').textContent = 'Ready...';
+    }
+
+    function clearAllData() {
+      if (!confirm('⚠️ This will clear ALL data (cart, orders, settings). Continue?')) {
+        return;
+      }
+      
+      log('🧹 Clearing localStorage...');
+      localStorage.clear();
+      
+      log('🧹 Clearing sessionStorage...');
+      sessionStorage.clear();
+      
+      log('✅ All data cleared!');
+      log('🔄 Redirecting to home in 2 seconds...');
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 2000);
+    }
+
+    function showCart() {
+      log('\n📦 CART DATA:');
+      log('════════════════════════════════════════');
+      const cart = localStorage.getItem('ramyeon_cart');
+      if (cart) {
+        try {
+          const parsed = JSON.parse(cart);
+          log(`Found ${parsed.length} items:`);
+          parsed.forEach((item, i) => {
+            log(`  ${i + 1}. ${item.name} x${item.quantity} - ₱${item.price}`);
+          });
+        } catch (e) {
+          log('❌ Invalid cart data: ' + e.message);
+        }
+      } else {
+        log('ℹ️ Cart is empty');
+      }
+      log('════════════════════════════════════════\n');
+    }
+
+    function showOrders() {
+      log('\n📋 ORDERS:');
+      log('════════════════════════════════════════');
+      
+      // Global orders
+      const globalOrders = localStorage.getItem('ramyeon_orders');
+      if (globalOrders) {
+        try {
+          const orders = JSON.parse(globalOrders);
+          log(`Global orders: ${orders.length}`);
+          orders.forEach((order, i) => {
+            log(`  ${i + 1}. ${order.id} - ₱${order.total} - ${order.paymentMethod} - ${order.status}`);
+          });
+        } catch (e) {
+          log('❌ Invalid global orders: ' + e.message);
+        }
+      } else {
+        log('ℹ️ No global orders');
+      }
+      
+      // User-specific orders
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('ramyeon_orders_'))
+        .forEach(key => {
+          try {
+            const orders = JSON.parse(localStorage.getItem(key));
+            log(`\n${key}: ${orders.length} orders`);
+            orders.forEach((order, i) => {
+              log(`  ${i + 1}. ${order.id} - ₱${order.total} - ${order.paymentMethod}`);
+            });
+          } catch (e) {
+            log(`❌ Invalid ${key}: ` + e.message);
+          }
+        });
+      
+      log('════════════════════════════════════════\n');
+    }
+
+    function showPending() {
+      log('\n⏳ PENDING ORDERS:');
+      log('════════════════════════════════════════');
+      const pending = localStorage.getItem('ramyeon_pending_order');
+      if (pending) {
+        try {
+          const order = JSON.parse(pending);
+          log(`ID: ${order.id}`);
+          log(`Total: ₱${order.total}`);
+          log(`Payment: ${order.paymentMethod}`);
+          log(`Status: ${order.status}`);
+          log(`Time: ${new Date(order.orderTime).toLocaleString()}`);
+          log(`Items: ${order.items.length}`);
+        } catch (e) {
+          log('❌ Invalid pending order: ' + e.message);
+        }
+      } else {
+        log('ℹ️ No pending orders');
+      }
+      log('════════════════════════════════════════\n');
+    }
+
+    function showAll() {
+      log('\n🔍 ALL RAMYEON DATA:');
+      log('════════════════════════════════════════');
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('ramyeon'));
+      if (keys.length === 0) {
+        log('ℹ️ No ramyeon data found');
+      } else {
+        keys.forEach(key => {
+          const value = localStorage.getItem(key);
+          log(`\n${key}:`);
+          log(value.substring(0, 200) + (value.length > 200 ? '...' : ''));
+        });
+      }
+      log('════════════════════════════════════════\n');
+    }
+
+    function clearCart() {
+      localStorage.removeItem('ramyeon_cart');
+      log('✅ Cart cleared');
+    }
+
+    function clearOrders() {
+      localStorage.removeItem('ramyeon_orders');
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('ramyeon_orders_'))
+        .forEach(k => localStorage.removeItem(k));
+      log('✅ All orders cleared');
+    }
+
+    function clearPending() {
+      localStorage.removeItem('ramyeon_pending_order');
+      log('✅ Pending orders cleared');
+    }
+  </script>
+</body>
+</html>
+
+
+

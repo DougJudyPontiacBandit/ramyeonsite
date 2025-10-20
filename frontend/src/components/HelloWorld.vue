@@ -8,7 +8,7 @@
           <h1>Are you starving?</h1>
           <p>Within a few clicks, find meals that are accessible near you</p>
           <div class="order-form">
-            <div class="toggle-buttons">
+            <div class="toggle-buttons" :class="{ 'pickup-active': deliveryType === 'Pickup' }">
               <button 
                 :class="{ active: deliveryType === 'Delivery' }" 
                 @click="setDeliveryType('Delivery')"
@@ -257,4 +257,4 @@ export default {
 }
 </script>
 
-<style src="./HelloWorld.css" scoped></style>
+<style src="./HelloWorldEnhanced.css" scoped></style>

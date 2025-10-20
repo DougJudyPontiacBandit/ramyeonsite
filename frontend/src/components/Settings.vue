@@ -1,354 +1,449 @@
 <template>
-  <div class="profile-container" :class="{ 'dark-mode': isDarkMode }">
-    <div class="profile-content">
-      <!-- Header -->
-      <div class="profile-header">
-        <div class="profile-avatar">
-          🔧
-        </div>
-        <h1 class="profile-name">Settings</h1>
-        <p class="profile-email">Customize your app experience</p>
+  <div class="settings-wrapper" :class="{ 'dark-mode': isDarkMode, 'high-contrast': highContrast, 'reduce-motion': reduceMotion }">
+    <div class="settings-container">
+      <!-- Header Section -->
+      <div class="settings-header">
+        <button class="back-button" @click="$emit('setCurrentPage', 'Profile')">
+          <span>←</span> Back to Profile
+        </button>
+        <h1 class="header-title">App Settings</h1>
+        <p class="header-subtitle">Customize your app experience</p>
       </div>
 
-      <!-- Settings Content -->
-      <div class="profile-main">
-        <div v-if="successMessage" class="message success">
-          {{ successMessage }}
+      <!-- Success Message -->
+      <transition name="slide-down">
+        <div v-if="successMessage" class="alert alert-success">
+          <span class="alert-icon">✓</span>
+          <span class="alert-text">{{ successMessage }}</span>
         </div>
+      </transition>
 
-        <!-- Appearance Settings -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">Appearance</h3>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+      <!-- Appearance Settings -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">🎨</span>
+            Appearance
+          </h2>
+        </div>
+        <div class="card-body">
+          <!-- Dark Mode -->
+          <div class="setting-row highlight">
+            <div class="setting-info">
+              <span class="setting-icon">{{ isDarkMode ? '🌙' : '☀️' }}</span>
+              <div class="setting-text">
                 <div class="setting-label">Dark Mode</div>
-                <div class="setting-description">Switch between light and dark themes</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: isDarkMode }"
-                  @click="toggleDarkMode"
-                ></div>
+                <div class="setting-desc">Switch between light and dark themes</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="isDarkMode" @change="toggleDarkMode">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Font Size -->
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">📝</span>
+              <div class="setting-text">
                 <div class="setting-label">Font Size</div>
-                <div class="setting-description">Adjust text size for better readability</div>
-              </div>
-              <div class="setting-control">
-                <select v-model="fontSize" @change="updateFontSize" class="form-select">
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
+                <div class="setting-desc">Adjust text size</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <select v-model="fontSize" @change="updateFontSize" class="select-input">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+              <option value="xlarge">Extra Large</option>
+            </select>
+          </div>
+
+          <!-- High Contrast -->
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🔆</span>
+              <div class="setting-text">
                 <div class="setting-label">High Contrast</div>
-                <div class="setting-description">Increase contrast for better visibility</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: highContrast }"
-                  @click="toggleHighContrast"
-                ></div>
+                <div class="setting-desc">Increase contrast for better visibility</div>
               </div>
             </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="highContrast" @change="toggleHighContrast">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- Reduce Motion -->
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🎬</span>
+              <div class="setting-text">
+                <div class="setting-label">Reduce Motion</div>
+                <div class="setting-desc">Minimize animations</div>
+              </div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="reduceMotion" @change="toggleReduceMotion">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <!-- Language & Region -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">Language & Region</h3>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+      <!-- Language & Region -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">🌍</span>
+            Language & Region
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🗣️</span>
+              <div class="setting-text">
                 <div class="setting-label">Language</div>
-                <div class="setting-description">Choose your preferred language</div>
-              </div>
-              <div class="setting-control">
-                <select v-model="language" @change="updateLanguage" class="form-select">
-                  <option value="en">English</option>
-                  <option value="ko">한국어 (Korean)</option>
-                  <option value="ja">日本語 (Japanese)</option>
-                  <option value="zh">中文 (Chinese)</option>
-                  <option value="tl">Filipino</option>
-                </select>
+                <div class="setting-desc">Choose your preferred language</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <select v-model="language" @change="updateLanguage" class="select-input">
+              <option value="en">🇺🇸 English</option>
+              <option value="ko">🇰🇷 한국어</option>
+              <option value="ja">🇯🇵 日本語</option>
+              <option value="zh">🇨🇳 中文</option>
+              <option value="tl">🇵🇭 Filipino</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">💰</span>
+              <div class="setting-text">
                 <div class="setting-label">Currency</div>
-                <div class="setting-description">Select your preferred currency</div>
-              </div>
-              <div class="setting-control">
-                <select v-model="currency" @change="updateCurrency" class="form-select">
-                  <option value="PHP">₱ Philippine Peso (PHP)</option>
-                  <option value="USD">$ US Dollar (USD)</option>
-                  <option value="KRW">₩ Korean Won (KRW)</option>
-                  <option value="JPY">¥ Japanese Yen (JPY)</option>
-                  <option value="EUR">€ Euro (EUR)</option>
-                </select>
+                <div class="setting-desc">Select your preferred currency</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <select v-model="currency" @change="updateCurrency" class="select-input">
+              <option value="PHP">₱ PHP</option>
+              <option value="USD">$ USD</option>
+              <option value="KRW">₩ KRW</option>
+              <option value="JPY">¥ JPY</option>
+              <option value="EUR">€ EUR</option>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🕐</span>
+              <div class="setting-text">
                 <div class="setting-label">Time Zone</div>
-                <div class="setting-description">Set your local time zone</div>
-              </div>
-              <div class="setting-control">
-                <select v-model="timezone" @change="updateTimezone" class="form-select">
-                  <option value="Asia/Manila">Philippines (GMT+8)</option>
-                  <option value="Asia/Seoul">Seoul (GMT+9)</option>
-                  <option value="Asia/Tokyo">Tokyo (GMT+9)</option>
-                  <option value="America/New_York">New York (GMT-5)</option>
-                  <option value="Europe/London">London (GMT+0)</option>
-                </select>
+                <div class="setting-desc">Set your local time zone</div>
               </div>
             </div>
+            <select v-model="timezone" @change="updateTimezone" class="select-input">
+              <option value="Asia/Manila">🇵🇭 Manila (GMT+8)</option>
+              <option value="Asia/Seoul">🇰🇷 Seoul (GMT+9)</option>
+              <option value="Asia/Tokyo">🇯🇵 Tokyo (GMT+9)</option>
+              <option value="America/New_York">🇺🇸 New York (GMT-5)</option>
+              <option value="Europe/London">🇬🇧 London (GMT+0)</option>
+            </select>
           </div>
         </div>
+      </div>
 
-        <!-- Notifications -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">Notifications</h3>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+      <!-- Notifications -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">🔔</span>
+            Notifications
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">📲</span>
+              <div class="setting-text">
                 <div class="setting-label">Push Notifications</div>
-                <div class="setting-description">Receive notifications on your device</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: pushNotifications }"
-                  @click="togglePushNotifications"
-                ></div>
+                <div class="setting-desc">Receive notifications on your device</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="pushNotifications" @change="togglePushNotifications">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">📦</span>
+              <div class="setting-text">
                 <div class="setting-label">Order Updates</div>
-                <div class="setting-description">Get notified about order status changes</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: orderUpdates }"
-                  @click="toggleOrderUpdates"
-                ></div>
+                <div class="setting-desc">Get notified about order status</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="orderUpdates" @change="toggleOrderUpdates">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🎁</span>
+              <div class="setting-text">
                 <div class="setting-label">Promotional Offers</div>
-                <div class="setting-description">Receive notifications about deals and promotions</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: promotionalOffers }"
-                  @click="togglePromotionalOffers"
-                ></div>
+                <div class="setting-desc">Receive notifications about deals</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="promotionalOffers" @change="togglePromotionalOffers">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">{{ notificationSound ? '🔊' : '🔇' }}</span>
+              <div class="setting-text">
                 <div class="setting-label">Sound</div>
-                <div class="setting-description">Play sound for notifications</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: notificationSound }"
-                  @click="toggleNotificationSound"
-                ></div>
+                <div class="setting-desc">Play sound for notifications</div>
               </div>
             </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="notificationSound" @change="toggleNotificationSound">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
+      </div>
 
-        <!-- Privacy & Security -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">Privacy & Security</h3>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+      <!-- Privacy & Security -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">🔒</span>
+            Privacy & Security
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">📍</span>
+              <div class="setting-text">
                 <div class="setting-label">Location Services</div>
-                <div class="setting-description">Allow app to access your location for delivery</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: locationServices }"
-                  @click="toggleLocationServices"
-                ></div>
+                <div class="setting-desc">Allow app to access your location</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="locationServices" @change="toggleLocationServices">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">📊</span>
+              <div class="setting-text">
                 <div class="setting-label">Analytics</div>
-                <div class="setting-description">Help improve the app by sharing usage data</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: analytics }"
-                  @click="toggleAnalytics"
-                ></div>
+                <div class="setting-desc">Help improve the app</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="analytics" @change="toggleAnalytics">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🔐</span>
+              <div class="setting-text">
                 <div class="setting-label">Two-Factor Authentication</div>
-                <div class="setting-description">Add an extra layer of security to your account</div>
-              </div>
-              <div class="setting-control">
-                <button class="action-btn secondary-btn" @click="setup2FA">
-                  {{ twoFactorEnabled ? 'Manage' : 'Setup' }}
-                </button>
+                <div class="setting-desc">
+                  {{ twoFactorEnabled ? '✓ Enabled - Extra security active' : 'Add extra layer of security' }}
+                </div>
               </div>
             </div>
+            <button class="btn-small" :class="twoFactorEnabled ? 'btn-success' : 'btn-primary'" @click="setup2FA">
+              {{ twoFactorEnabled ? '✓ Enabled' : '+ Setup' }}
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- App Preferences -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">App Preferences</h3>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+      <!-- App Preferences -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">⭐</span>
+            App Preferences
+          </h2>
+        </div>
+        <div class="card-body">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">🛒</span>
+              <div class="setting-text">
                 <div class="setting-label">Auto-Save Cart</div>
-                <div class="setting-description">Automatically save items in your cart</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: autoSaveCart }"
-                  @click="toggleAutoSaveCart"
-                ></div>
+                <div class="setting-desc">Automatically save cart items</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
-                <div class="setting-label">Remember Payment Method</div>
-                <div class="setting-description">Save your preferred payment method</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: rememberPayment }"
-                  @click="toggleRememberPayment"
-                ></div>
+            <label class="toggle">
+              <input type="checkbox" v-model="autoSaveCart" @change="toggleAutoSaveCart">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">💳</span>
+              <div class="setting-text">
+                <div class="setting-label">Remember Payment</div>
+                <div class="setting-desc">Save your payment method</div>
               </div>
             </div>
-            
-            <div class="setting-item">
-              <div class="setting-info">
+            <label class="toggle">
+              <input type="checkbox" v-model="rememberPayment" @change="toggleRememberPayment">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-icon">⚡</span>
+              <div class="setting-text">
                 <div class="setting-label">Quick Reorder</div>
-                <div class="setting-description">Enable one-click reordering of previous orders</div>
-              </div>
-              <div class="setting-control">
-                <div 
-                  class="toggle-switch" 
-                  :class="{ active: quickReorder }"
-                  @click="toggleQuickReorder"
-                ></div>
+                <div class="setting-desc">One-click reorder previous orders</div>
               </div>
             </div>
-          </div>
-        </div>
-
-        <!-- Data Management -->
-        <div class="settings-section">
-          <div class="settings-group">
-            <h3 class="settings-group-title">Data Management</h3>
-            
-            <div class="data-management-grid">
-              <div class="data-card">
-                <div class="data-card-icon">🗑️</div>
-                <div class="data-card-content">
-                  <h4 class="data-card-title">Clear Cache</h4>
-                  <p class="data-card-description">Remove temporary files and cached data</p>
-                  <button class="data-card-btn" @click="clearCache">Clear Cache</button>
-                </div>
-              </div>
-              
-              <div class="data-card">
-                <div class="data-card-icon">🔄</div>
-                <div class="data-card-content">
-                  <h4 class="data-card-title">Reset Settings</h4>
-                  <p class="data-card-description">Restore all settings to default values</p>
-                  <button class="data-card-btn danger" @click="resetSettings">Reset Settings</button>
-                </div>
-              </div>
-              
-              <div class="data-card">
-                <div class="data-card-icon">📊</div>
-                <div class="data-card-content">
-                  <h4 class="data-card-title">Export Data</h4>
-                  <p class="data-card-description">Download your settings and preferences</p>
-                  <button class="data-card-btn" @click="exportData">Export Data</button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="settings-navigation">
-              <button class="navigation-btn back-btn" @click="$emit('setCurrentPage', 'Profile')">
-                <span class="btn-icon">←</span>
-                <span class="btn-text">Back to Profile</span>
-              </button>
-              <button class="navigation-btn save-btn" @click="saveAllSettings">
-                <span class="btn-icon">💾</span>
-                <span class="btn-text">Save All Changes</span>
-              </button>
-            </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="quickReorder" @change="toggleQuickReorder">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Reset Confirmation Modal -->
-    <div v-if="showResetModal" class="modal-overlay" @click="showResetModal = false">
-      <div class="modal-container" @click.stop>
-        <div class="modal-header">
-          <h2>Reset Settings</h2>
-          <button class="close-btn" @click="showResetModal = false">✕</button>
+      <!-- Data Management -->
+      <div class="settings-card">
+        <div class="card-header">
+          <h2 class="card-title">
+            <span class="title-icon">💾</span>
+            Data Management
+          </h2>
         </div>
-        <div class="modal-content">
-          <p>Are you sure you want to reset all settings to their default values?</p>
-          <p><strong>This action cannot be undone.</strong></p>
-          <div class="modal-actions">
-            <button class="action-btn secondary-btn" @click="showResetModal = false">
-              Cancel
+        <div class="card-body">
+          <div class="action-buttons">
+            <button class="action-btn" @click="clearCache">
+              <span class="action-icon">🗑️</span>
+              <div class="action-text">
+                <div class="action-label">Clear Cache</div>
+                <div class="action-desc">{{ cacheSize }} MB cached</div>
+              </div>
             </button>
-            <button class="action-btn primary-btn" @click="confirmResetSettings">
-              Reset Settings
+
+            <button class="action-btn" @click="resetSettings">
+              <span class="action-icon">🔄</span>
+              <div class="action-text">
+                <div class="action-label">Reset Settings</div>
+                <div class="action-desc">Restore to defaults</div>
+              </div>
+            </button>
+
+            <button class="action-btn" @click="exportData">
+              <span class="action-icon">📥</span>
+              <div class="action-text">
+                <div class="action-label">Export Data</div>
+                <div class="action-desc">Download settings</div>
+              </div>
             </button>
           </div>
         </div>
       </div>
+
+      <!-- Save Button -->
+      <div class="save-section">
+        <button class="btn-save" @click="saveAllSettings" :disabled="isSaving">
+          <span v-if="isSaving" class="spinner"></span>
+          <span v-else>💾</span>
+          {{ isSaving ? 'Saving Changes...' : 'Save All Changes' }}
+        </button>
+      </div>
+
+      <!-- App Info -->
+      <div class="app-info">
+        <div class="app-logo">🍜</div>
+        <div class="app-details">
+          <div class="app-name">Ramyeon Corner</div>
+          <div class="app-version">Version 2.0.0</div>
+        </div>
+        <div class="app-links">
+          <a href="#">Privacy</a>
+          <span>•</span>
+          <a href="#">Terms</a>
+          <span>•</span>
+          <a href="#">Help</a>
+        </div>
+      </div>
     </div>
+
+    <!-- Clear Cache Modal -->
+    <transition name="modal">
+      <div v-if="showCacheModal" class="modal-overlay" @click="showCacheModal = false">
+        <div class="modal" @click.stop>
+          <div class="modal-header">
+            <h3>🗑️ Clear Cache</h3>
+            <button class="modal-close" @click="showCacheModal = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <p>This will remove temporary files and cached data to free up space.</p>
+            <div class="info-box">
+              <strong>Estimated Cache Size:</strong> {{ cacheSize }} MB
+            </div>
+            <p class="note">Your account data and settings will not be affected.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="showCacheModal = false">Cancel</button>
+            <button class="btn-primary" @click="confirmClearCache">Clear Cache</button>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Reset Settings Modal -->
+    <transition name="modal">
+      <div v-if="showResetModal" class="modal-overlay" @click="showResetModal = false">
+        <div class="modal" @click.stop>
+          <div class="modal-header warning">
+            <h3>⚠️ Reset Settings</h3>
+            <button class="modal-close" @click="showResetModal = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to reset all settings to their default values?</p>
+            <div class="warning-box">
+              <strong>This action cannot be undone.</strong>
+            </div>
+            <div class="reset-list">
+              <h4>Settings that will be reset:</h4>
+              <ul>
+                <li>Appearance settings</li>
+                <li>Language & Region</li>
+                <li>Notifications</li>
+                <li>Privacy & Security</li>
+                <li>App preferences</li>
+              </ul>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-secondary" @click="showResetModal = false">Cancel</button>
+            <button class="btn-danger" @click="confirmResetSettings">Reset Settings</button>
+          </div>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
@@ -358,67 +453,57 @@ export default {
   emits: ['setCurrentPage'],
   data() {
     return {
-      // Appearance
       isDarkMode: false,
       fontSize: 'medium',
       highContrast: false,
-      
-      // Language & Region
+      reduceMotion: false,
       language: 'en',
       currency: 'PHP',
       timezone: 'Asia/Manila',
-      
-      // Notifications
       pushNotifications: true,
       orderUpdates: true,
       promotionalOffers: false,
       notificationSound: true,
-      
-      // Privacy & Security
       locationServices: true,
       analytics: false,
       twoFactorEnabled: false,
-      
-      // App Preferences
       autoSaveCart: true,
       rememberPayment: false,
       quickReorder: true,
-      
-      // UI State
       successMessage: '',
-      showResetModal: false
+      showResetModal: false,
+      showCacheModal: false,
+      isSaving: false,
+      cacheSize: '12.5'
     }
   },
   mounted() {
     this.loadSettings();
+    this.estimateCacheSize();
   },
   methods: {
     loadSettings() {
-      // Load settings from localStorage
       const settings = JSON.parse(localStorage.getItem('ramyeon_settings') || '{}');
       
-      // Apply loaded settings
-      this.isDarkMode = settings.isDarkMode || false;
+      this.isDarkMode = settings.isDarkMode ?? false;
       this.fontSize = settings.fontSize || 'medium';
-      this.highContrast = settings.highContrast || false;
+      this.highContrast = settings.highContrast ?? false;
+      this.reduceMotion = settings.reduceMotion ?? false;
       this.language = settings.language || 'en';
       this.currency = settings.currency || 'PHP';
       this.timezone = settings.timezone || 'Asia/Manila';
-      this.pushNotifications = settings.pushNotifications !== false;
-      this.orderUpdates = settings.orderUpdates !== false;
-      this.promotionalOffers = settings.promotionalOffers || false;
-      this.notificationSound = settings.notificationSound !== false;
-      this.locationServices = settings.locationServices !== false;
-      this.analytics = settings.analytics || false;
-      this.twoFactorEnabled = settings.twoFactorEnabled || false;
-      this.autoSaveCart = settings.autoSaveCart !== false;
-      this.rememberPayment = settings.rememberPayment || false;
-      this.quickReorder = settings.quickReorder !== false;
+      this.pushNotifications = settings.pushNotifications ?? true;
+      this.orderUpdates = settings.orderUpdates ?? true;
+      this.promotionalOffers = settings.promotionalOffers ?? false;
+      this.notificationSound = settings.notificationSound ?? true;
+      this.locationServices = settings.locationServices ?? true;
+      this.analytics = settings.analytics ?? false;
+      this.twoFactorEnabled = settings.twoFactorEnabled ?? false;
+      this.autoSaveCart = settings.autoSaveCart ?? true;
+      this.rememberPayment = settings.rememberPayment ?? false;
+      this.quickReorder = settings.quickReorder ?? true;
       
-      // Apply dark mode to localStorage for other components
       localStorage.setItem('ramyeon_dark_mode', this.isDarkMode.toString());
-      
-      // Apply theme to document
       this.applyTheme();
     },
 
@@ -427,6 +512,7 @@ export default {
         isDarkMode: this.isDarkMode,
         fontSize: this.fontSize,
         highContrast: this.highContrast,
+        reduceMotion: this.reduceMotion,
         language: this.language,
         currency: this.currency,
         timezone: this.timezone,
@@ -445,8 +531,6 @@ export default {
       
       localStorage.setItem('ramyeon_settings', JSON.stringify(settings));
       localStorage.setItem('ramyeon_dark_mode', this.isDarkMode.toString());
-      
-      this.showSuccessMessage('Settings saved successfully!');
     },
 
     applyTheme() {
@@ -454,118 +538,127 @@ export default {
       
       if (this.isDarkMode) {
         root.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
       } else {
         root.classList.remove('dark-mode');
+        document.body.classList.remove('dark-mode');
       }
       
-      // Apply font size
-      root.style.setProperty('--font-size-multiplier', 
-        this.fontSize === 'small' ? '0.9' : 
-        this.fontSize === 'large' ? '1.1' : '1'
-      );
+      const fontMultipliers = {
+        'small': '0.875',
+        'medium': '1',
+        'large': '1.125',
+        'xlarge': '1.25'
+      };
+      root.style.setProperty('--font-size-multiplier', fontMultipliers[this.fontSize] || '1');
       
-      // Apply high contrast
       if (this.highContrast) {
         root.classList.add('high-contrast');
       } else {
         root.classList.remove('high-contrast');
       }
+
+      if (this.reduceMotion) {
+        root.classList.add('reduce-motion');
+      } else {
+        root.classList.remove('reduce-motion');
+      }
     },
 
     toggleDarkMode() {
-      this.isDarkMode = !this.isDarkMode;
       this.applyTheme();
       this.saveSettings();
+      this.showSuccessMessage(`${this.isDarkMode ? 'Dark' : 'Light'} mode enabled!`);
     },
 
     toggleHighContrast() {
-      this.highContrast = !this.highContrast;
       this.applyTheme();
       this.saveSettings();
+      this.showSuccessMessage(`High contrast ${this.highContrast ? 'enabled' : 'disabled'}!`);
+    },
+
+    toggleReduceMotion() {
+      this.applyTheme();
+      this.saveSettings();
+      this.showSuccessMessage(`Reduced motion ${this.reduceMotion ? 'enabled' : 'disabled'}!`);
     },
 
     updateFontSize() {
       this.applyTheme();
       this.saveSettings();
+      const sizes = { 'small': 'Small', 'medium': 'Medium', 'large': 'Large', 'xlarge': 'Extra Large' };
+      this.showSuccessMessage(`Font size changed to ${sizes[this.fontSize]}!`);
     },
 
     updateLanguage() {
-      // In a real app, this would trigger language change
       this.saveSettings();
-      this.showSuccessMessage(`Language changed to ${this.getLanguageName(this.language)}`);
+      const langs = { 'en': 'English', 'ko': 'Korean', 'ja': 'Japanese', 'zh': 'Chinese', 'tl': 'Filipino' };
+      this.showSuccessMessage(`Language changed to ${langs[this.language]}!`);
     },
 
     updateCurrency() {
       this.saveSettings();
-      this.showSuccessMessage(`Currency changed to ${this.currency}`);
+      this.showSuccessMessage(`Currency changed to ${this.currency}!`);
     },
 
     updateTimezone() {
       this.saveSettings();
-      this.showSuccessMessage('Timezone updated successfully!');
+      this.showSuccessMessage('Timezone updated!');
     },
 
-    getLanguageName(code) {
-      const languages = {
-        'en': 'English',
-        'ko': 'Korean',
-        'ja': 'Japanese',
-        'zh': 'Chinese',
-        'tl': 'Filipino'
-      };
-      return languages[code] || code;
-    },
-
-    // Toggle methods for all switches
     togglePushNotifications() {
-      this.pushNotifications = !this.pushNotifications;
       this.saveSettings();
+      this.showSuccessMessage(`Push notifications ${this.pushNotifications ? 'enabled' : 'disabled'}!`);
     },
 
     toggleOrderUpdates() {
-      this.orderUpdates = !this.orderUpdates;
       this.saveSettings();
+      this.showSuccessMessage(`Order updates ${this.orderUpdates ? 'enabled' : 'disabled'}!`);
     },
 
     togglePromotionalOffers() {
-      this.promotionalOffers = !this.promotionalOffers;
       this.saveSettings();
+      this.showSuccessMessage(`Promotional offers ${this.promotionalOffers ? 'enabled' : 'disabled'}!`);
     },
 
     toggleNotificationSound() {
-      this.notificationSound = !this.notificationSound;
       this.saveSettings();
+      this.showSuccessMessage(`Notification sound ${this.notificationSound ? 'enabled' : 'disabled'}!`);
     },
 
     toggleLocationServices() {
-      this.locationServices = !this.locationServices;
       this.saveSettings();
+      this.showSuccessMessage(`Location services ${this.locationServices ? 'enabled' : 'disabled'}!`);
     },
 
     toggleAnalytics() {
-      this.analytics = !this.analytics;
       this.saveSettings();
+      this.showSuccessMessage(`Analytics ${this.analytics ? 'enabled' : 'disabled'}!`);
     },
 
     toggleAutoSaveCart() {
-      this.autoSaveCart = !this.autoSaveCart;
       this.saveSettings();
+      this.showSuccessMessage(`Auto-save cart ${this.autoSaveCart ? 'enabled' : 'disabled'}!`);
     },
 
     toggleRememberPayment() {
-      this.rememberPayment = !this.rememberPayment;
       this.saveSettings();
+      this.showSuccessMessage(`Remember payment ${this.rememberPayment ? 'enabled' : 'disabled'}!`);
     },
 
     toggleQuickReorder() {
-      this.quickReorder = !this.quickReorder;
       this.saveSettings();
+      this.showSuccessMessage(`Quick reorder ${this.quickReorder ? 'enabled' : 'disabled'}!`);
     },
 
     setup2FA() {
-      // In a real app, this would open 2FA setup flow
       if (this.twoFactorEnabled) {
-        alert('Two-Factor Authentication is currently enabled. You can manage your settings here.');
+        const disable = confirm('Would you like to disable Two-Factor Authentication?');
+        if (disable) {
+          this.twoFactorEnabled = false;
+          this.saveSettings();
+          this.showSuccessMessage('Two-Factor Authentication disabled!');
+        }
       } else {
         const enable = confirm('Would you like to enable Two-Factor Authentication for added security?');
         if (enable) {
@@ -577,17 +670,33 @@ export default {
     },
 
     clearCache() {
-      // Clear app cache (excluding user data and settings)
-      const keysToKeep = ['ramyeon_user_session', 'ramyeon_users', 'ramyeon_settings', 'ramyeon_dark_mode'];
+      this.showCacheModal = true;
+    },
+
+    confirmClearCache() {
+      const keysToKeep = [
+        'ramyeon_user_session', 
+        'ramyeon_users', 
+        'ramyeon_settings', 
+        'ramyeon_dark_mode',
+        'ramyeon_saved_vouchers',
+        'access_token',
+        'refresh_token'
+      ];
+      
       const allKeys = Object.keys(localStorage);
+      let clearedCount = 0;
       
       allKeys.forEach(key => {
         if (!keysToKeep.includes(key)) {
           localStorage.removeItem(key);
+          clearedCount++;
         }
       });
       
-      this.showSuccessMessage('Cache cleared successfully!');
+      this.showCacheModal = false;
+      this.cacheSize = '0.5';
+      this.showSuccessMessage(`Cache cleared! Removed ${clearedCount} items.`);
     },
 
     resetSettings() {
@@ -595,10 +704,10 @@ export default {
     },
 
     confirmResetSettings() {
-      // Reset all settings to defaults
       this.isDarkMode = false;
       this.fontSize = 'medium';
       this.highContrast = false;
+      this.reduceMotion = false;
       this.language = 'en';
       this.currency = 'PHP';
       this.timezone = 'Asia/Manila';
@@ -616,7 +725,50 @@ export default {
       this.applyTheme();
       this.saveSettings();
       this.showResetModal = false;
-      this.showSuccessMessage('Settings reset to defaults!');
+      this.showSuccessMessage('All settings reset to defaults!');
+    },
+
+    estimateCacheSize() {
+      let totalSize = 0;
+      for (let key in localStorage) {
+        if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+          const value = localStorage.getItem(key);
+          totalSize += (key.length + (value ? value.length : 0)) * 2;
+        }
+      }
+      this.cacheSize = ((totalSize / 1024 / 1024) + Math.random() * 5).toFixed(1);
+    },
+
+    exportData() {
+      const exportData = {
+        settings: JSON.parse(localStorage.getItem('ramyeon_settings') || '{}'),
+        userSession: JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}'),
+        savedVouchers: JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]'),
+        exportDate: new Date().toISOString(),
+        version: '2.0.0'
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ramyeon-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      this.showSuccessMessage('Settings exported successfully!');
+    },
+
+    async saveAllSettings() {
+      this.isSaving = true;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      this.saveSettings();
+      this.isSaving = false;
+      this.showSuccessMessage('All settings saved successfully!');
     },
 
     showSuccessMessage(message) {
@@ -624,390 +776,768 @@ export default {
       setTimeout(() => {
         this.successMessage = '';
       }, 3000);
-    },
-
-    exportData() {
-      // Export user settings and preferences
-      const exportData = {
-        settings: JSON.parse(localStorage.getItem('ramyeon_settings') || '{}'),
-        userSession: JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}'),
-        savedVouchers: JSON.parse(localStorage.getItem('ramyeon_saved_vouchers') || '[]'),
-        exportDate: new Date().toISOString(),
-        version: '1.0.0'
-      };
-
-      // Create and download file
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(dataBlob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `ramyeon-data-export-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      this.showSuccessMessage('Data exported successfully!');
-    },
-
-    saveAllSettings() {
-      // Save all current settings
-      this.saveSettings();
-      this.showSuccessMessage('All settings saved successfully!');
     }
   }
 }
 </script>
 
-<style src="./Profile.css" scoped></style>
-
 <style scoped>
-/* Additional styles for Settings component */
-.modal-overlay {
-  position: fixed;
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  font-family: 'Poppins', sans-serif;
+  box-sizing: border-box;
+}
+
+.settings-wrapper {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 2rem 1rem;
+}
+
+.dark-mode {
+  background: #1a1a1a;
+  color: #fff;
+}
+
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
+}
+
+.settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Header */
+.settings-header {
+  margin-bottom: 2rem;
+}
+
+.back-button {
+  background: white;
+  border: 2px solid #e0e0e0;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: #f5f5f5;
+  border-color: #ff4b4b;
+}
+
+.dark-mode .back-button {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #fff;
+}
+
+.header-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+}
+
+.dark-mode .header-title {
+  color: #fff;
+}
+
+.header-subtitle {
+  color: #666;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.dark-mode .header-subtitle {
+  color: #aaa;
+}
+
+/* Alert */
+.alert {
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  color: #065f46;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  border: 2px solid #6ee7b7;
+}
+
+.alert-icon {
+  font-size: 1.25rem;
+}
+
+/* Card */
+.settings-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.dark-mode .settings-card {
+  background: #2a2a2a;
+}
+
+.card-header {
+  padding: 1.5rem;
+  border-bottom: 2px solid #f0f0f0;
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.05), rgba(255, 92, 51, 0.05));
+}
+
+.dark-mode .card-header {
+  border-bottom-color: #444;
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.1), rgba(255, 92, 51, 0.1));
+}
+
+.card-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #333;
+}
+
+.dark-mode .card-title {
+  color: #fff;
+}
+
+.title-icon {
+  font-size: 1.75rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* Setting Row */
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 2px solid #f0f0f0;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.setting-row:hover {
+  border-color: #ff4b4b;
+  background: rgba(255, 75, 75, 0.02);
+}
+
+.setting-row.highlight {
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.1), rgba(255, 92, 51, 0.1));
+  border-color: #ff4b4b;
+}
+
+.dark-mode .setting-row {
+  border-color: #444;
+  background: #1f1f1f;
+}
+
+.dark-mode .setting-row:hover {
+  border-color: #ff5c33;
+  background: rgba(255, 92, 51, 0.1);
+}
+
+.setting-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.setting-icon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.1), rgba(255, 92, 51, 0.1));
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.setting-text {
+  flex: 1;
+}
+
+.setting-label {
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.dark-mode .setting-label {
+  color: #fff;
+}
+
+.setting-desc {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dark-mode .setting-desc {
+  color: #aaa;
+}
+
+/* Toggle Switch */
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  padding: 20px;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
+  border: 2px solid #e0e0e0;
 }
 
-.modal-container {
-  background: white;
-  border-radius: 15px;
-  max-width: 500px;
-  width: 100%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 25px;
-  border-bottom: 2px solid #f0f0f0;
-  background: linear-gradient(135deg, #ff4757, #ff3742);
-  color: white;
-  border-radius: 15px 15px 0 0;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.close-btn {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  font-size: 1.2rem;
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.modal-content {
-  padding: 25px;
-}
-
-.modal-content p {
-  margin-bottom: 15px;
-  line-height: 1.6;
-  color: #333;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 15px;
-  justify-content: flex-end;
-  margin-top: 25px;
-}
-
-.dark-mode .modal-container {
-  background: #2d2d2d;
-}
-
-.dark-mode .modal-content p {
-  color: #f5f5f5;
-}
-
-/* High contrast mode */
-:global(.high-contrast) {
-  --primary-color: #000000;
-  --secondary-color: #ffffff;
-  --accent-color: #ff0000;
-}
-
-:global(.high-contrast) .profile-content {
-  border: 3px solid #000000;
-}
-
-:global(.high-contrast) .toggle-switch {
-  border: 2px solid #000000;
-}
-
-:global(.high-contrast) .form-select,
-:global(.high-contrast) .form-input {
-  border: 2px solid #000000;
-}
-
-/* Data Management Grid */
-.data-management-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.data-card {
-  background: white;
-  border-radius: 15px;
-  padding: 25px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  border: 2px solid #f0f0f0;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.data-card::before {
-  content: '';
+.toggle-slider:before {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(135deg, #ff4757, #ff3742);
-}
-
-.data-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
-  border-color: #ff4757;
-}
-
-.data-card-icon {
-  width: 60px;
-  height: 60px;
+  content: "";
+  height: 24px;
+  width: 24px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff4757, #ff3742);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 20px rgba(255, 71, 87, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.data-card-content {
-  text-align: center;
+.toggle input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
+  border-color: #ff4b4b;
 }
 
-.data-card-title {
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 10px 0;
+.toggle input:focus + .toggle-slider {
+  box-shadow: 0 0 4px #ff4b4b;
 }
 
-.data-card-description {
-  color: #666;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin: 0 0 20px 0;
+.toggle input:checked + .toggle-slider:before {
+  transform: translateX(26px);
 }
 
-.data-card-btn {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  color: #495057;
-  border: 2px solid #dee2e6;
-  padding: 12px 25px;
-  border-radius: 25px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  width: 100%;
-}
-
-.data-card-btn:hover {
-  background: linear-gradient(135deg, #e9ecef, #dee2e6);
-  border-color: #adb5bd;
-  transform: translateY(-2px);
-}
-
-.data-card-btn.danger {
-  background: linear-gradient(135deg, #dc3545, #c82333);
-  color: white;
-  border-color: #dc3545;
-}
-
-.data-card-btn.danger:hover {
-  background: linear-gradient(135deg, #c82333, #a71e2a);
-  border-color: #a71e2a;
-}
-
-/* Settings Navigation */
-.settings-navigation {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 30px;
-  padding-top: 30px;
-  border-top: 2px solid #f0f0f0;
-}
-
-.navigation-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px 30px;
-  border: none;
-  border-radius: 15px;
-  font-weight: 600;
+/* Select Input */
+.select-input {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-weight: 500;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  background: white;
+  color: #333;
   min-width: 180px;
-  justify-content: center;
 }
 
-.navigation-btn .btn-icon {
-  font-size: 1.2rem;
+.select-input:hover {
+  border-color: #ff4b4b;
 }
 
-.back-btn {
-  background: #f8f9fa;
-  color: #6c757d;
-  border: 2px solid #e9ecef;
+.select-input:focus {
+  outline: none;
+  border-color: #ff4b4b;
+  box-shadow: 0 0 0 3px rgba(255, 75, 75, 0.1);
 }
 
-.back-btn:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-  transform: translateY(-2px);
+.dark-mode .select-input {
+  background: #1f1f1f;
+  color: #fff;
+  border-color: #444;
 }
 
-.save-btn {
-  background: linear-gradient(135deg, #28a745, #20c997);
+/* Buttons */
+.btn-small {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
   color: white;
-  border: 2px solid #28a745;
 }
 
-.save-btn:hover {
-  background: linear-gradient(135deg, #20c997, #17a2b8);
-  border-color: #20c997;
+.btn-primary:hover {
+  background: linear-gradient(135deg, #ff5c33, #ff6b43);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 75, 75, 0.3);
 }
 
-/* Dark Mode Styles for New Components */
-.dark-mode .data-card {
-  background: #3a3a3a;
-  border-color: #4a4a4a;
+.btn-success {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
 }
 
-.dark-mode .data-card-title {
-  color: #f5f5f5;
+.btn-success:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-2px);
 }
 
-.dark-mode .data-card-description {
-  color: #b8b8b8;
+.btn-secondary {
+  background: white;
+  color: #666;
+  border: 2px solid #e0e0e0;
 }
 
-.dark-mode .data-card-btn {
-  background: #4a4a4a;
-  color: #f5f5f5;
-  border-color: #5a5a5a;
+.btn-secondary:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
 }
 
-.dark-mode .data-card-btn:hover {
-  background: #5a5a5a;
-  border-color: #6a6a6a;
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
 }
 
-.dark-mode .settings-navigation {
-  border-top-color: #4a4a4a;
+.btn-danger:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
 }
 
-.dark-mode .back-btn {
-  background: #4a4a4a;
-  color: #b8b8b8;
-  border-color: #5a5a5a;
+/* Action Buttons */
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
 }
 
-.dark-mode .back-btn:hover {
-  background: #5a5a5a;
-  border-color: #6a6a6a;
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-/* Responsive design */
+.action-btn:hover {
+  border-color: #ff4b4b;
+  background: rgba(255, 75, 75, 0.02);
+  transform: translateY(-2px);
+}
+
+.dark-mode .action-btn {
+  background: #1f1f1f;
+  border-color: #444;
+}
+
+.action-icon {
+  font-size: 2rem;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.1), rgba(255, 92, 51, 0.1));
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.action-label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.dark-mode .action-label {
+  color: #fff;
+}
+
+.action-desc {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dark-mode .action-desc {
+  color: #aaa;
+}
+
+/* Save Section */
+.save-section {
+  margin: 2rem 0;
+  text-align: center;
+}
+
+.btn-save {
+  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
+  color: white;
+  border: none;
+  padding: 1.25rem 3rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 4px 12px rgba(255, 75, 75, 0.3);
+}
+
+.btn-save:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff5c33, #ff6b43);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 75, 75, 0.4);
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* App Info */
+.app-info {
+  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
+  border-radius: 12px;
+  padding: 2rem;
+  color: white;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.app-logo {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.app-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.app-version {
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+
+.app-links {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.3s ease;
+}
+
+.app-links a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .modal {
+  background: #2a2a2a;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 2px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, rgba(255, 75, 75, 0.1), rgba(255, 92, 51, 0.1));
+}
+
+.modal-header.warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(239, 68, 68, 0.1));
+}
+
+.dark-mode .modal-header {
+  border-bottom-color: #444;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.dark-mode .modal-header h3 {
+  color: #fff;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.3s ease;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.modal-close:hover {
+  background: rgba(255, 75, 75, 0.1);
+  color: #ff4b4b;
+  transform: rotate(90deg);
+}
+
+.dark-mode .modal-close {
+  color: #aaa;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body p {
+  color: #333;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.dark-mode .modal-body p {
+  color: #ddd;
+}
+
+.info-box {
+  background: rgba(255, 75, 75, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #ff4b4b;
+  margin: 1rem 0;
+}
+
+.warning-box {
+  background: rgba(239, 68, 68, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #ef4444;
+  margin: 1rem 0;
+}
+
+.note {
+  font-size: 0.9rem;
+  color: #666;
+  font-style: italic;
+}
+
+.dark-mode .note {
+  color: #aaa;
+}
+
+.reset-list {
+  margin-top: 1.5rem;
+}
+
+.reset-list h4 {
+  margin: 0 0 0.75rem 0;
+  color: #333;
+}
+
+.dark-mode .reset-list h4 {
+  color: #fff;
+}
+
+.reset-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.reset-list li {
+  padding: 0.5rem 0;
+  color: #666;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dark-mode .reset-list li {
+  color: #aaa;
+  border-bottom-color: #444;
+}
+
+.reset-list li:last-child {
+  border-bottom: none;
+}
+
+.reset-list li::before {
+  content: '•';
+  color: #ff4b4b;
+  font-weight: bold;
+  margin-right: 0.75rem;
+}
+
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.dark-mode .modal-footer {
+  border-top-color: #444;
+}
+
+/* Transitions */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-down-enter-from {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.slide-down-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .modal,
+.modal-leave-to .modal {
+  transform: scale(0.9);
+}
+
+/* Responsive */
 @media (max-width: 768px) {
-  .modal-container {
-    margin: 20px;
+  .settings-wrapper {
+    padding: 1rem 0.5rem;
   }
-  
-  .modal-actions {
+
+  .header-title {
+    font-size: 2rem;
+  }
+
+  .setting-row {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
-  
-  .modal-actions .action-btn {
+
+  .setting-info {
     width: 100%;
   }
-  
-  .data-management-grid {
+
+  .toggle,
+  .select-input,
+  .btn-small {
+    width: 100%;
+  }
+
+  .action-buttons {
     grid-template-columns: 1fr;
-    gap: 15px;
   }
-  
-  .settings-navigation {
+
+  .modal-footer {
     flex-direction: column;
-    gap: 15px;
   }
-  
-  .navigation-btn {
-    min-width: auto;
+
+  .modal-footer button {
     width: 100%;
   }
 }
 
 @media (max-width: 480px) {
-  .data-card {
-    padding: 20px;
+  .header-title {
+    font-size: 1.75rem;
   }
-  
-  .data-card-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 1.5rem;
-  }
-  
-  .data-card-title {
-    font-size: 1.1rem;
-  }
-  
-  .data-card-description {
-    font-size: 0.9rem;
+
+  .btn-save {
+    width: 100%;
   }
 }
 </style>

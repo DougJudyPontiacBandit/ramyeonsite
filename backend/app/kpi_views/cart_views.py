@@ -202,6 +202,10 @@ class CartCheckoutView(APIView):
             delivery_address = request.data.get('delivery_address')
             payment_method = request.data.get('payment_method')
             special_instructions = request.data.get('special_instructions')
+            
+            # PayMongo payment details
+            payment_reference = request.data.get('payment_reference')
+            payment_status = request.data.get('payment_status', 'pending')
 
             # Get cart
             cart = self.cart_service.get_cart_by_customer(customer_id)
@@ -232,7 +236,10 @@ class CartCheckoutView(APIView):
                     "delivery_type": delivery_type,
                     "delivery_address": delivery_address,
                     "payment_method": payment_method,
-                    "special_instructions": special_instructions
+                    "special_instructions": special_instructions,
+                    "payment_reference": payment_reference,
+                    "payment_status": payment_status,
+                    "order_type": "customer_app"
                 }
             )
 
@@ -257,13 +264,18 @@ class CartCheckoutView(APIView):
 
                 return Response({
                     "success": True,
-                    "message": "Checkout successful",
+                    "message": "Order placed successfully",
+                    "order_id": result.get('transaction', {}).get('transaction_id', ''),
                     "transaction": result,
                     "delivery": {
                         "delivery_type": delivery_type,
                         "delivery_address": delivery_address,
                         "payment_method": payment_method,
                         "special_instructions": special_instructions
+                    },
+                    "payment": {
+                        "payment_reference": payment_reference,
+                        "payment_status": payment_status
                     }
                 }, status=status.HTTP_201_CREATED)
             else:

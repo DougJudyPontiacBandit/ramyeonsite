@@ -152,3 +152,58 @@ def customer_change_password(request):
             {'error': 'An error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@csrf_exempt
+@api_view(['PUT', 'PATCH'])
+@jwt_required
+def customer_update_profile(request):
+    """Update customer profile information"""
+    try:
+        customer_id = request.customer['customer_id']
+        profile_data = {}
+        
+        # Extract allowed fields from request
+        if 'full_name' in request.data:
+            profile_data['full_name'] = request.data['full_name']
+        if 'email' in request.data:
+            profile_data['email'] = request.data['email']
+        if 'username' in request.data:
+            profile_data['username'] = request.data['username']
+        if 'phone' in request.data:
+            profile_data['phone'] = request.data['phone']
+        if 'delivery_address' in request.data:
+            profile_data['delivery_address'] = request.data['delivery_address']
+        if 'profile_picture' in request.data:
+            profile_data['profile_picture'] = request.data['profile_picture']
+        if 'birthdate' in request.data:
+            profile_data['birthdate'] = request.data['birthdate']
+        if 'preferences' in request.data:
+            profile_data['preferences'] = request.data['preferences']
+        
+        updated_customer = customer_service.update_customer_profile(
+            customer_id, profile_data
+        )
+        
+        if updated_customer:
+            customer_data = sanitize_customer_data(updated_customer)
+            return Response({
+                'customer': customer_data,
+                'message': 'Profile updated successfully'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response(
+                {'error': 'Failed to update profile'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+    except ValueError as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        logger.error(f"Update profile error: {str(e)}")
+        return Response(
+            {'error': 'An error occurred while updating profile'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

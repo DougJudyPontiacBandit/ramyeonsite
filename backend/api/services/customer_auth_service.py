@@ -172,3 +172,70 @@ class CustomerAuthService:
             
         except Exception as e:
             raise Exception(f"Error changing password: {str(e)}")
+    
+    def update_customer_profile(self, customer_id, profile_data):
+        """Update customer profile information"""
+        try:
+            customer = self.get_customer_by_id(customer_id)
+            if not customer:
+                raise ValueError("Customer not found")
+            
+            # Fields that can be updated
+            allowed_fields = ['full_name', 'phone', 'delivery_address', 'profile_picture', 'birthdate']
+            update_data = {}
+            
+            for field in allowed_fields:
+                if field in profile_data and profile_data[field] is not None:
+                    update_data[field] = profile_data[field]
+            
+            # Check if email is being updated
+            if 'email' in profile_data and profile_data['email']:
+                new_email = profile_data['email'].strip().lower()
+                # Check if new email is different and not already in use
+                if new_email != customer['email']:
+                    existing_email = self.customer_collection.find_one({
+                        'email': new_email,
+                        '_id': {'$ne': customer_id},
+                        'isDeleted': {'$ne': True}
+                    })
+                    if existing_email:
+                        raise ValueError("Email already in use by another customer")
+                    update_data['email'] = new_email
+            
+            # Check if username is being updated
+            if 'username' in profile_data and profile_data['username']:
+                new_username = profile_data['username'].strip()
+                if new_username != customer['username']:
+                    existing_username = self.customer_collection.find_one({
+                        'username': new_username,
+                        '_id': {'$ne': customer_id},
+                        'isDeleted': {'$ne': True}
+                    })
+                    if existing_username:
+                        raise ValueError("Username already in use by another customer")
+                    update_data['username'] = new_username
+            
+            # Add preferences if provided
+            if 'preferences' in profile_data:
+                update_data['preferences'] = profile_data['preferences']
+            
+            # Update timestamp
+            update_data['last_updated'] = datetime.utcnow()
+            
+            # Perform update
+            result = self.customer_collection.update_one(
+                {'_id': customer_id},
+                {'$set': update_data}
+            )
+            
+            if result.modified_count > 0:
+                return self.get_customer_by_id(customer_id)
+            
+            # Return customer even if nothing was modified
+            return customer
+            
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logger.error(f"Error updating customer profile: {str(e)}")
+            raise Exception(f"Error updating customer profile: {str(e)}")

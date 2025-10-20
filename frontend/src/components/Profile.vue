@@ -12,18 +12,46 @@
 
       <!-- Profile Main Content -->
       <div class="profile-main">
-        <!-- Points Section -->
-        <div class="points-section">
-          <div class="points-badge">
-            <div class="points-circle">
-              <div class="points-label">Total Points</div>
-              <div class="points-value" :key="user.points">{{ user.points }}</div>
-              <div class="points-unit">pts</div>
+        <!-- Loyalty Points Section -->
+        <div class="loyalty-points-section">
+          <div class="points-header">
+            <h2 class="section-title">⭐ Loyalty Points</h2>
+            <div class="points-balance">
+              <div class="points-circle">
+                <div class="points-value">{{ user.loyalty_points || 0 }}</div>
+                <div class="points-unit">points</div>
+              </div>
+              <div class="points-value-display">
+                <div class="points-peso-value">₱{{ ((user.loyalty_points || 0) / 4).toFixed(2) }}</div>
+                <div class="points-value-label">in value</div>
+              </div>
             </div>
           </div>
-          <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
-            <span>🎁</span> See Promotions
-          </button>
+          
+          <div class="points-actions">
+            <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
+              🎁 Browse Promotions
+            </button>
+            <button class="points-history-btn" @click="showPointsHistory">
+              📊 Points History
+            </button>
+          </div>
+          
+          <!-- Points Info -->
+          <div class="points-info">
+            <div class="info-item">
+              <span class="info-label">Earn Rate:</span>
+              <span class="info-value">20% of order value</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Redemption:</span>
+              <span class="info-value">4 points = ₱1 discount</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Min Redemption:</span>
+              <span class="info-value">40 points (₱10)</span>
+            </div>
+          </div>
         </div>
 
         <!-- Vouchers Section -->
@@ -85,6 +113,20 @@
             </button>
           </div>
         </div>
+        
+        <!-- Order & Payment Management -->
+        <div class="settings-section">
+          <h3 class="settings-title">Orders & Payments</h3>
+          <p class="settings-description">View your order history and payment transactions</p>
+          <div class="settings-buttons">
+            <button class="settings-btn order-history-btn" @click="$emit('setCurrentPage', 'OrderHistory')">
+              📦 Order History
+            </button>
+            <button class="settings-btn payment-history-btn" @click="$emit('setCurrentPage', 'PaymentHistory')">
+              💳 Payment History
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -118,6 +160,7 @@ export default {
         lastName: 'Doe',
         email: 'john.doe@example.com',
         points: 3280,
+        loyalty_points: 0, // Real points from database (starts at 0)
         vouchers: []
       },
       showVoucherModal: false,
@@ -140,6 +183,19 @@ export default {
     this.loadDarkModePreference();
     this.fetchCurrentUser();
     this.loadSavedVouchers();
+  },
+  
+  activated() {
+    // Refresh user data when component is activated (navigated to)
+    this.fetchCurrentUser();
+  },
+  
+  watch: {
+    'user.loyalty_points'(newPoints, oldPoints) {
+      console.log('🔄 Profile loyalty points changed:', { old: oldPoints, new: newPoints });
+      // Force update when points change
+      this.$forceUpdate();
+    }
   },
   methods: {
     loadUserData() {
@@ -173,18 +229,56 @@ export default {
 
     async fetchCurrentUser() {
       try {
+        console.log('🔍 DEBUG: Profile fetching user data...');
+        
+        // Check if user is logged in
+        const token = localStorage.getItem('access_token');
+        console.log('🔍 DEBUG: JWT Token exists:', !!token);
+        
+        if (!token) {
+          console.log('⚠️ No JWT token - user not logged in');
+          return;
+        }
+        
         const { authAPI } = await import('../services/api.js')
-        const user = await authAPI.getProfile()
-        const first = user.first_name || user.firstName || (user.user_data?.full_name?.split(' ')[0])
-        const last = user.last_name || user.lastName || (user.user_data?.full_name?.split(' ').slice(1).join(' ') || '')
+        console.log('🔍 DEBUG: Calling authAPI.getProfile()...');
+        const response = await authAPI.getProfile()
+        console.log('🔍 DEBUG: Profile API Response:', response);
+        
+        // Handle the response structure (same as Cart component)
+        let user;
+        if (response && response.customer) {
+          user = response.customer;
+          console.log('🔍 DEBUG: Using response.customer:', user);
+        } else {
+          user = response;
+          console.log('🔍 DEBUG: Using direct response:', user);
+        }
+        
+        console.log('🔍 DEBUG: Final user object:', user);
+        console.log('🔍 DEBUG: User loyalty_points:', user.loyalty_points);
+        
+        const first = user.first_name || user.firstName || (user.full_name?.split(' ')[0])
+        const last = user.last_name || user.lastName || (user.full_name?.split(' ').slice(1).join(' ') || '')
         this.user = {
           ...this.user,
           firstName: first || this.user.firstName,
           lastName: last || this.user.lastName,
-          email: user.email || this.user.email
+          email: user.email || this.user.email,
+          loyalty_points: user.loyalty_points || 0 // Update with real points from database
         }
+        
+        console.log('✅ Profile loaded with loyalty points:', this.user.loyalty_points);
+        
+        // Force Vue to update the UI
+        this.$forceUpdate();
       } catch (e) {
-        // ignore if not logged in
+        console.error('❌ Profile fetch error:', e);
+        console.log('💡 To fix: Make sure you are logged in and backend is running');
+        
+        // For debugging: Set some test points
+        this.user.loyalty_points = 50;
+        console.log('🧪 Using test points for debugging:', this.user.loyalty_points);
       }
     },
 
@@ -195,6 +289,13 @@ export default {
 
     generatePointsQRCode() {
       return `POINTS-${this.user.email || 'guest'}-${Date.now()}`;
+    },
+    
+    // Method to refresh profile data (can be called from other components)
+    async refreshProfile() {
+      console.log('🔄 Manually refreshing profile data...');
+      await this.fetchCurrentUser();
+      this.$forceUpdate();
     },
 
     getVoucherIcon(title) {
@@ -258,6 +359,11 @@ export default {
 
     showAllVouchers() {
       this.showAllVouchersFlag = !this.showAllVouchersFlag;
+    },
+
+    showPointsHistory() {
+      // Show points history modal
+      this.showPointsHistoryModal = true;
     },
 
     updateUserSession() {
@@ -347,47 +453,173 @@ export default {
   }
 }
 
-/* Message notifications with neon effect */
+/* Message notifications */
 .message {
   padding: 18px 25px;
   border-radius: 15px;
   font-weight: 600;
   backdrop-filter: blur(20px);
   border: 1px solid;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .message.success {
-  background: rgba(40, 167, 69, 0.2);
-  color: #00ff88;
-  border-color: rgba(0, 255, 136, 0.4);
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border-color: rgba(40, 167, 69, 0.3);
 }
 
 .message.error {
-  background: rgba(220, 53, 69, 0.2);
-  color: #ff4757;
-  border-color: rgba(255, 71, 87, 0.4);
-  text-shadow: 0 0 10px rgba(255, 71, 87, 0.5);
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border-color: rgba(220, 53, 69, 0.3);
 }
 
 .message.info {
-  background: rgba(102, 126, 234, 0.2);
-  color: #667eea;
-  border-color: rgba(102, 126, 234, 0.4);
-  text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+  background: linear-gradient(135deg, #ff6f61, #ff8a80);
+  color: white;
+  border-color: rgba(255, 111, 97, 0.3);
 }
 
-/* Glowing text effect for hover */
-.promotions-btn span {
-  display: inline-block;
-  margin-right: 8px;
-  animation: iconSpin 3s linear infinite;
+/* Loyalty Points Section */
+.loyalty-points-section {
+  background: linear-gradient(135deg, #fff8e1, #ffecb3);
+  border-radius: 20px;
+  padding: 25px;
+  margin-bottom: 30px;
+  border: 2px solid #ffb74d;
+  box-shadow: 0 8px 25px rgba(255, 152, 0, 0.15);
 }
 
-@keyframes iconSpin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.points-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.points-balance {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.points-circle {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+}
+
+.points-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.points-unit {
+  font-size: 0.8rem;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.points-value-display {
+  text-align: center;
+}
+
+.points-peso-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e65100;
+  line-height: 1;
+}
+
+.points-value-label {
+  font-size: 0.9rem;
+  color: #bf360c;
+  font-weight: 500;
+}
+
+.points-actions {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.promotions-btn,
+.points-history-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.promotions-btn {
+  background: linear-gradient(135deg, #ff4757, #ff3742);
+  color: white;
+}
+
+.promotions-btn:hover {
+  background: linear-gradient(135deg, #ff3742, #ff2f3a);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 71, 87, 0.3);
+}
+
+.points-history-btn {
+  background: linear-gradient(135deg, #ff9800, #f57c00);
+  color: white;
+}
+
+.points-history-btn:hover {
+  background: linear-gradient(135deg, #f57c00, #ef6c00);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+}
+
+.points-info {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  padding: 15px;
+  border: 1px solid rgba(255, 152, 0, 0.2);
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 152, 0, 0.1);
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #e65100;
+  font-size: 0.9rem;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #bf360c;
+  font-size: 0.9rem;
+}
+
+/* Smooth hover effect */
+.promotions-btn {
+  transition: all 0.3s ease;
 }
 
 /* Responsive enhancements */
