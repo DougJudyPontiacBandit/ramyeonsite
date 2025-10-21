@@ -371,7 +371,7 @@
 </template>
 
 <script>
-import { paymongoAPI } from '../services/usePaymongo.js';
+import { paymongoAPI } from '../composables/usePaymongo.js';
 import { ordersAPI, authAPI } from '../services/api.js';
 import { promotionsAPI } from '../services/apiPromotions.js';
 import { loyaltyAPI } from '../services/apiLoyalty.js';
@@ -1485,7 +1485,18 @@ export default {
         }
       } catch (error) {
         console.error('❌ Failed to load real customer profile:', error);
-        console.error('❌ Error details:', error.message);
+        
+        // Enhanced error logging
+        if (error.response) {
+          console.error('❌ HTTP Status:', error.response.status);
+          console.error('❌ Response Data:', error.response.data);
+          console.error('❌ Response Headers:', error.response.headers);
+        } else if (error.data) {
+          console.error('❌ Error Data:', error.data);
+        }
+        
+        console.error('❌ Error Message:', error.message || 'No error message available');
+        console.error('❌ Full Error Object:', JSON.stringify(error, null, 2));
         
         // For debugging: Use a test profile with some points
         this.userProfile = {
@@ -1497,6 +1508,7 @@ export default {
         
         console.log('🧪 Using test profile with points for debugging:', this.userProfile.loyalty_points);
         console.log('💡 To fix: Make sure you are logged in and backend is running');
+        console.log('💡 Check backend logs for detailed error information');
       }
     },
     
@@ -1680,11 +1692,19 @@ export default {
       window.ramyeonPaymentDiagnostics = {
         checkEnv: () => {
           console.log('🔍 PayMongo Environment Check:');
-          console.log('Public Key:', process.env.VUE_APP_PAYMONGO_PUBLIC_KEY ? '✅ Set' : '❌ Not Set');
-          console.log('Secret Key:', process.env.VUE_APP_PAYMONGO_SECRET_KEY ? '✅ Set' : '❌ Not Set');
-          console.log('Mode:', process.env.VUE_APP_PAYMONGO_MODE || 'test');
+          // Check both Vue CLI and Vite environment variables
+          const publicKey = (typeof process !== 'undefined' && process.env && process.env.VUE_APP_PAYMONGO_PUBLIC_KEY) || 
+                           (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PAYMONGO_PUBLIC_KEY);
+          const secretKey = (typeof process !== 'undefined' && process.env && process.env.VUE_APP_PAYMONGO_SECRET_KEY) || 
+                           (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PAYMONGO_SECRET_KEY);
+          const mode = (typeof process !== 'undefined' && process.env && process.env.VUE_APP_PAYMONGO_MODE) || 
+                      (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PAYMONGO_MODE) || 'test';
           
-          if (!process.env.VUE_APP_PAYMONGO_SECRET_KEY) {
+          console.log('Public Key:', publicKey ? '✅ Set' : '❌ Not Set');
+          console.log('Secret Key:', secretKey ? '✅ Set' : '❌ Not Set');
+          console.log('Mode:', mode);
+          
+          if (!secretKey) {
             console.error('❌ PayMongo keys not configured! Please set up your .env file.');
             console.log('📖 See PAYMENT_FIXES_AND_SETUP.md for instructions');
           }
@@ -1851,12 +1871,6 @@ export default {
     this.setupPaymentDiagnostics();
   },
   
-  beforeUnmount() {
-    // Clean up diagnostics
-    if (window.ramyeonPaymentDiagnostics) {
-      delete window.ramyeonPaymentDiagnostics;
-    }
-  },
   watch: {
     cartItems: {
       handler(newCart) {
@@ -1879,6 +1893,10 @@ export default {
   
   beforeUnmount() {
     console.log('🔧 Cart component unmounting');
+    // Clean up diagnostics
+    if (window.ramyeonPaymentDiagnostics) {
+      delete window.ramyeonPaymentDiagnostics;
+    }
   }
 }
 </script>

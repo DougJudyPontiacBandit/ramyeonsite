@@ -1,8 +1,8 @@
 // API Service for Backend Communication
 import axios from 'axios';
 
-// Base URL for API - adjust this to match your backend URL
-const API_BASE_URL = 'http://localhost:8000/api';
+// Base URL for API - adjusted to match the unified PANN_POS backend
+const API_BASE_URL = 'http://localhost:8000/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -91,7 +91,16 @@ export const authAPI = {
       const response = await apiClient.get('/auth/customer/me/');
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch profile' };
+      console.error('API Error in getProfile:', error);
+      
+      // Return more detailed error information
+      const errorData = error.response?.data || { error: 'Network error' };
+      const enhancedError = new Error(errorData.message || errorData.error || 'Failed to fetch profile');
+      enhancedError.response = error.response;
+      enhancedError.data = errorData;
+      enhancedError.status = error.response?.status;
+      
+      throw enhancedError;
     }
   },
 

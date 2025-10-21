@@ -1,14 +1,72 @@
 /**
- * PayMongo API Service
+ * PayMongo API Composable
  * Handles payment processing for GCash, PayMaya, and Card payments
  */
 
 // Get PayMongo API keys from environment variables
-// eslint-disable-next-line no-unused-vars
-const PAYMONGO_PUBLIC_KEY = process.env.VUE_APP_PAYMONGO_PUBLIC_KEY;
-const PAYMONGO_SECRET_KEY = process.env.VUE_APP_PAYMONGO_SECRET_KEY;
-// eslint-disable-next-line no-unused-vars
-const PAYMONGO_MODE = process.env.VUE_APP_PAYMONGO_MODE || 'test';
+// Handle both Vue CLI (process.env) and Vite (import.meta.env) environments
+const getEnvVar = (key, defaultValue = null) => {
+  try {
+    // Try Vue CLI environment first (process.env)
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key];
+    }
+    // Try Vite environment (import.meta.env)
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key];
+    }
+    return defaultValue;
+  } catch (error) {
+    console.warn(`Could not access environment variable ${key}:`, error);
+    return defaultValue;
+  }
+};
+
+// Get environment variables dynamically
+const getPayMongoKeys = () => {
+  // Try multiple ways to get the keys
+  const publicKey = getEnvVar('VUE_APP_PAYMONGO_PUBLIC_KEY') || 
+                   getEnvVar('VITE_PAYMONGO_PUBLIC_KEY') ||
+                   // Fallback to hardcoded values for testing (remove in production)
+                   'pk_test_8NmDEEMt6wN5LSGSiTShjoSs';
+                   
+  const secretKey = getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') || 
+                   getEnvVar('VITE_PAYMONGO_SECRET_KEY') ||
+                   // Fallback to hardcoded values for testing (remove in production)
+                   'sk_test_33DPJG17cScDA11mDi5RoHyu';
+                   
+  const mode = getEnvVar('VUE_APP_PAYMONGO_MODE') || 
+              getEnvVar('VITE_PAYMONGO_MODE', 'test');
+              
+  return { publicKey, secretKey, mode };
+};
+
+// Get keys dynamically rather than at module load time
+let PAYMONGO_PUBLIC_KEY, PAYMONGO_SECRET_KEY, PAYMONGO_MODE;
+
+// Initialize keys and debug
+const initKeys = () => {
+  const keys = getPayMongoKeys();
+  PAYMONGO_PUBLIC_KEY = keys.publicKey;
+  PAYMONGO_SECRET_KEY = keys.secretKey;
+  PAYMONGO_MODE = keys.mode;
+  
+  // Debug: Log environment variables (remove in production)
+  console.log('PayMongo Config:', {
+    hasProcessEnv: typeof process !== 'undefined' && !!process.env,
+    hasImportMeta: typeof import.meta !== 'undefined' && !!import.meta.env,
+    hasPublicKey: !!PAYMONGO_PUBLIC_KEY,
+    hasSecretKey: !!PAYMONGO_SECRET_KEY,
+    mode: PAYMONGO_MODE,
+    publicKeyPreview: PAYMONGO_PUBLIC_KEY ? `${PAYMONGO_PUBLIC_KEY.substring(0, 10)}...` : 'undefined',
+    processEnvKeys: typeof process !== 'undefined' && process.env ? Object.keys(process.env).filter(k => k.includes('PAYMONGO')) : 'no process.env',
+    importMetaEnvKeys: typeof import.meta !== 'undefined' && import.meta.env ? Object.keys(import.meta.env).filter(k => k.includes('PAYMONGO')) : 'no import.meta.env',
+    usingFallbackKeys: !getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') && !getEnvVar('VITE_PAYMONGO_SECRET_KEY')
+  });
+};
+
+// Initialize keys
+initKeys();
 
 // PayMongo API base URL
 const PAYMONGO_API_URL = 'https://api.paymongo.com/v1';
@@ -23,11 +81,31 @@ const convertToCentavos = (amount) => {
 };
 
 /**
+ * Get PayMongo secret key dynamically
+ * @returns {string} PayMongo secret key
+ */
+const getSecretKey = () => {
+  // Always get fresh keys dynamically
+  const keys = getPayMongoKeys();
+  const secretKey = keys.secretKey;
+    
+  if (!secretKey) {
+    console.error('PayMongo secret key is undefined. Please check your .env file.');
+    console.error('Process env keys:', typeof process !== 'undefined' && process.env ? Object.keys(process.env).filter(k => k.includes('PAYMONGO')) : 'no process.env');
+    console.error('Import meta env keys:', typeof import.meta !== 'undefined' && import.meta.env ? Object.keys(import.meta.env).filter(k => k.includes('PAYMONGO')) : 'no import.meta.env');
+    throw new Error('PayMongo secret key is not configured. Please check your environment variables.');
+  }
+  
+  return secretKey;
+};
+
+/**
  * Create authorization header for PayMongo API
  * @returns {string} Base64 encoded authorization header
  */
 const getAuthHeader = () => {
-  const encodedKey = btoa(PAYMONGO_SECRET_KEY + ':');
+  const secretKey = getSecretKey();
+  const encodedKey = btoa(secretKey + ':');
   return `Basic ${encodedKey}`;
 };
 
@@ -145,11 +223,9 @@ export const processPayMayaPayment = async ({ amount, orderId, customerEmail, cu
  * @param {Object} params - Payment parameters
  * @param {number} params.amount - Amount in pesos
  * @param {string} params.orderId - Order ID
- * @param {string} params.customerEmail - Customer email
- * @param {string} params.customerName - Customer name
  * @returns {Promise<Object>} PayMongo payment link object with redirect URL
  */
-export const processCardPayment = async ({ amount, orderId, customerEmail, customerName }) => {
+export const processCardPayment = async ({ amount, orderId }) => {
   try {
     const successUrl = `${window.location.origin}/#/cart?payment=success&order=${orderId}`;
     const failedUrl = `${window.location.origin}/#/cart?payment=failed&order=${orderId}`;
@@ -336,5 +412,3 @@ export const paymongoAPI = {
   getSourceStatus,
   getPaymentIntentStatus
 };
-
-

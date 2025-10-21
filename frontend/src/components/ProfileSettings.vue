@@ -725,7 +725,8 @@ export default {
     },
 
     togglePreference(preference) {
-      // Preference already toggled by v-model
+      // Preference already toggled by v-model, but we can log which one
+      console.log(`Preference ${preference} toggled`);
     },
 
     async savePreferences() {

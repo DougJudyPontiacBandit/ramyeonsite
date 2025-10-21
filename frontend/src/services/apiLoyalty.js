@@ -8,12 +8,12 @@ import apiClient from './api.js';
 export const loyaltyAPI = {
   /**
    * Get customer loyalty points balance
-   * @param {string} customerId - Customer ID
+   * Note: customerId is not needed as it's retrieved from JWT token
    * @returns {Promise<Object>} Customer points data
    */
-  getBalance: async (customerId) => {
+  getBalance: async () => {
     try {
-      const response = await apiClient.get(`/customer/loyalty/balance/${customerId}`);
+      const response = await apiClient.get('/customer/loyalty/balance/');
       return {
         success: true,
         data: response.data
@@ -29,15 +29,14 @@ export const loyaltyAPI = {
 
   /**
    * Get customer loyalty points history
-   * @param {string} customerId - Customer ID
-   * @param {number} page - Page number (default: 1)
-   * @param {number} limit - Items per page (default: 20)
+   * Note: customerId is not needed as it's retrieved from JWT token
+   * @param {number} limit - Items per page (default: 50)
    * @returns {Promise<Object>} Points transaction history
    */
-  getHistory: async (customerId, page = 1, limit = 20) => {
+  getHistory: async (limit = 50) => {
     try {
-      const response = await apiClient.get(`/customer/loyalty/history/${customerId}`, {
-        params: { page, limit }
+      const response = await apiClient.get('/customer/loyalty/history/', {
+        params: { limit }
       });
       return {
         success: true,
@@ -54,17 +53,14 @@ export const loyaltyAPI = {
 
   /**
    * Validate points redemption
-   * @param {string} customerId - Customer ID
+   * Note: customerId is retrieved from JWT token, orderSubtotal not used in backend validation
    * @param {number} pointsToRedeem - Points to redeem
-   * @param {number} orderSubtotal - Order subtotal
    * @returns {Promise<Object>} Validation result
    */
-  validateRedemption: async (customerId, pointsToRedeem, orderSubtotal) => {
+  validateRedemption: async (pointsToRedeem) => {
     try {
-      const response = await apiClient.post('/customer/loyalty/validate-redemption', {
-        customer_id: customerId,
-        points_to_redeem: pointsToRedeem,
-        order_subtotal: orderSubtotal
+      const response = await apiClient.post('/customer/loyalty/validate-redemption/', {
+        points_to_redeem: pointsToRedeem
       });
       return {
         success: true,
@@ -100,23 +96,19 @@ export const loyaltyAPI = {
 
   /**
    * Get points expiration info
-   * @param {string} customerId - Customer ID
+   * Note: This endpoint is not implemented in the unified backend yet
    * @returns {Promise<Object>} Points expiration data
    */
-  getExpirationInfo: async (customerId) => {
-    try {
-      const response = await apiClient.get(`/customer/loyalty/expiration/${customerId}`);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Error fetching points expiration:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to fetch points expiration'
-      };
-    }
+  getExpirationInfo: async () => {
+    // This endpoint doesn't exist in the unified backend yet
+    // Return a placeholder response for now
+    return {
+      success: true,
+      data: {
+        message: 'Points expiration feature not implemented yet',
+        expiration_date: null
+      }
+    };
   },
 
   /**
@@ -175,7 +167,7 @@ export const loyaltyAPI = {
    */
   healthCheck: async () => {
     try {
-      const response = await apiClient.get('/customer/loyalty/health');
+      const response = await apiClient.get('/customer/loyalty/health/');
       return {
         success: true,
         data: response.data
