@@ -24,16 +24,12 @@ const getEnvVar = (key, defaultValue = null) => {
 
 // Get environment variables dynamically
 const getPayMongoKeys = () => {
-  // Try multiple ways to get the keys
+  // Try multiple ways to get the keys from environment variables only
   const publicKey = getEnvVar('VUE_APP_PAYMONGO_PUBLIC_KEY') || 
-                   getEnvVar('VITE_PAYMONGO_PUBLIC_KEY') ||
-                   // Fallback to hardcoded values for testing (remove in production)
-                   'pk_test_8NmDEEMt6wN5LSGSiTShjoSs';
+                   getEnvVar('VITE_PAYMONGO_PUBLIC_KEY');
                    
   const secretKey = getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') || 
-                   getEnvVar('VITE_PAYMONGO_SECRET_KEY') ||
-                   // Fallback to hardcoded values for testing (remove in production)
-                   'sk_test_33DPJG17cScDA11mDi5RoHyu';
+                   getEnvVar('VITE_PAYMONGO_SECRET_KEY');
                    
   const mode = getEnvVar('VUE_APP_PAYMONGO_MODE') || 
               getEnvVar('VITE_PAYMONGO_MODE', 'test');
@@ -61,7 +57,7 @@ const initKeys = () => {
     publicKeyPreview: PAYMONGO_PUBLIC_KEY ? `${PAYMONGO_PUBLIC_KEY.substring(0, 10)}...` : 'undefined',
     processEnvKeys: typeof process !== 'undefined' && process.env ? Object.keys(process.env).filter(k => k.includes('PAYMONGO')) : 'no process.env',
     importMetaEnvKeys: typeof import.meta !== 'undefined' && import.meta.env ? Object.keys(import.meta.env).filter(k => k.includes('PAYMONGO')) : 'no import.meta.env',
-    usingFallbackKeys: !getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') && !getEnvVar('VITE_PAYMONGO_SECRET_KEY')
+    envVarsLoaded: !!(getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') || getEnvVar('VITE_PAYMONGO_SECRET_KEY'))
   });
 };
 
