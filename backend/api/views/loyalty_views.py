@@ -182,3 +182,6 @@ def loyalty_health_check(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+
+
+

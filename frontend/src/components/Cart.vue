@@ -45,13 +45,13 @@
           </div>
           
           <!-- Loyalty Points Section -->
-          <div class="loyalty-points-section" v-if="userProfile">
+          <div class="loyalty-points-section" v-if="userProfile && userProfile.id !== 'guest'">
             <div class="points-header">
               <div class="points-info">
                 <span class="points-icon">⭐</span>
                 <span class="points-label">Your Points:</span>
-                <span class="points-balance">{{ userProfile.loyalty_points || 0 }}</span>
-                <span class="points-value">(₱{{ ((userProfile.loyalty_points || 0) / 4).toFixed(2) }} value)</span>
+                <span class="points-balance">{{ userProfile?.loyalty_points || 0 }}</span>
+                <span class="points-value">(₱{{ ((userProfile?.loyalty_points || 0) / 4).toFixed(2) }} value)</span>
               </div>
             </div>
             
@@ -65,7 +65,7 @@
                 <span class="checkbox-text">Use loyalty points</span>
               </label>
               
-              <div v-if="useLoyaltyPoints && (userProfile.loyalty_points || 0) >= 40" class="points-input-group">
+              <div v-if="useLoyaltyPoints && (userProfile?.loyalty_points || 0) >= 40" class="points-input-group">
                 <input 
                   type="number" 
                   v-model="pointsToRedeem" 
@@ -80,7 +80,7 @@
                   <small>40 pts = ₱10 | 80 pts = ₱20 (max per order)</small>
                 </div>
               </div>
-              <div v-else-if="useLoyaltyPoints && (userProfile.loyalty_points || 0) < 40" class="points-insufficient">
+              <div v-else-if="useLoyaltyPoints && (userProfile?.loyalty_points || 0) < 40" class="points-insufficient">
                 <span class="insufficient-message">⚠️ You need at least 40 points to redeem (₱10 minimum)</span>
               </div>
             </div>
@@ -356,16 +356,59 @@
       ⭐ TEST POINTS
     </button>
     
+    <button 
+      @click="clearCart" 
+      style="position: fixed; bottom: 140px; right: 20px; z-index: 999999; background: red; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(255,0,0,0.5);"
+    >
+      🗑️ CLEAR CART
+    </button>
+    
+    <button 
+      @click="forceClearCart" 
+      style="position: fixed; bottom: 200px; right: 20px; z-index: 999999; background: darkred; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(139,0,0,0.5);"
+    >
+      💥 FORCE CLEAR
+    </button>
+    
+    <button 
+      @click="skipUserProfile" 
+      style="position: fixed; bottom: 260px; right: 20px; z-index: 999999; background: purple; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(128,0,128,0.5);"
+    >
+      ⏭️ SKIP PROFILE
+    </button>
+    
+    <button 
+      @click="testBackendConnection" 
+      style="position: fixed; bottom: 320px; right: 20px; z-index: 999999; background: blue; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,255,0.5);"
+    >
+      🔧 TEST BACKEND
+    </button>
+    
+    <button 
+      @click="forceLogin" 
+      style="position: fixed; bottom: 380px; right: 20px; z-index: 999999; background: green; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(0,128,0,0.5);"
+    >
+      🔐 FORCE LOGIN
+    </button>
+    
     <!-- Even More Obvious Debug Info -->
     <div 
-      v-if="cartItems.length > 0"
-      style="position: fixed; bottom: 150px; right: 20px; z-index: 999999; background: yellow; color: black; padding: 10px; border: 2px solid orange; border-radius: 5px; font-size: 12px; max-width: 200px;"
+      style="position: fixed; bottom: 440px; right: 20px; z-index: 999999; background: yellow; color: black; padding: 10px; border: 2px solid orange; border-radius: 5px; font-size: 12px; max-width: 300px;"
     >
       <strong>Debug Info:</strong><br>
+      Cart Items: {{ cartItems.length }}<br>
       showOrderConfirmation: {{ showOrderConfirmation }}<br>
       confirmedOrder: {{ confirmedOrder ? 'Set' : 'Null' }}<br>
       User Profile: {{ userProfile ? 'Loaded' : 'Not Loaded' }}<br>
-      Loyalty Points: {{ userProfile?.loyalty_points || 0 }}
+      Loyalty Points: {{ userProfile?.loyalty_points || 0 }}<br>
+      JWT Token: {{ hasJWTToken ? 'Exists' : 'Missing' }}<br>
+      <div style="margin-top: 5px;">
+        <button @click="clearCart" style="background: red; color: white; border: none; padding: 5px; border-radius: 3px; margin: 2px; cursor: pointer;">Clear Cart</button>
+        <button @click="forceClearCart" style="background: darkred; color: white; border: none; padding: 5px; border-radius: 3px; margin: 2px; cursor: pointer;">Force Clear</button>
+        <button @click="skipUserProfile" style="background: purple; color: white; border: none; padding: 5px; border-radius: 3px; margin: 2px; cursor: pointer;">Skip Profile</button>
+        <button @click="testBackendConnection" style="background: blue; color: white; border: none; padding: 5px; border-radius: 3px; margin: 2px; cursor: pointer;">Test Backend</button>
+        <button @click="forceLogin" style="background: green; color: white; border: none; padding: 5px; border-radius: 3px; margin: 2px; cursor: pointer;">Force Login</button>
+      </div>
     </div>
   </div>
 </template>
@@ -417,6 +460,10 @@ export default {
     }
   },
   computed: {
+    hasJWTToken() {
+      const storage = this.safeLocalStorage();
+      return storage && storage.getItem('access_token') !== null;
+    },
     subtotal() {
       return this.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     },
@@ -442,6 +489,16 @@ export default {
     }
   },
   methods: {
+    // Safe localStorage access helper
+    safeLocalStorage() {
+      try {
+        return typeof localStorage !== 'undefined' ? localStorage : null;
+      } catch (error) {
+        console.warn('localStorage not available:', error);
+        return null;
+      }
+    },
+    
     increaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
@@ -469,7 +526,7 @@ export default {
     onPointsToggle() {
       if (this.useLoyaltyPoints) {
         // Initialize with minimum points
-        this.pointsToRedeem = Math.min(40, this.userProfile.loyalty_points);
+        this.pointsToRedeem = Math.min(40, this.userProfile?.loyalty_points || 0);
         this.calculatePointsDiscount();
       } else {
         this.pointsToRedeem = 0;
@@ -482,7 +539,7 @@ export default {
     },
     
     calculatePointsDiscount() {
-      if (!this.useLoyaltyPoints || !this.pointsToRedeem) {
+      if (!this.useLoyaltyPoints || !this.pointsToRedeem || !this.userProfile) {
         this.pointsDiscount = 0;
         return;
       }
@@ -490,7 +547,7 @@ export default {
       // Calculate max points that can be used (80 points maximum per transaction)
       const maxDiscount = Math.min(20, this.subtotal * 0.20); // Max ₱20 or 20% of subtotal
       this.maxPointsToRedeem = Math.min(
-        this.userProfile.loyalty_points,
+        this.userProfile?.loyalty_points || 0,
         Math.floor(maxDiscount * 4), // Convert back to points (4 points = ₱1)
         80 // Maximum 80 points per transaction
       );
@@ -1007,7 +1064,7 @@ export default {
         }
         
         // Handle loyalty points redemption (only for authenticated users)
-        if (this.userProfile && this.userProfile.id !== 'guest' && this.useLoyaltyPoints && this.pointsToRedeem > 0) {
+        if (this.userProfile && this.userProfile?.id !== 'guest' && this.useLoyaltyPoints && this.pointsToRedeem > 0) {
           try {
             console.log('⭐ Redeeming loyalty points:', this.pointsToRedeem);
             const redeemResult = await loyaltyAPI.redeemPoints(this.pointsToRedeem, orderId);
@@ -1047,7 +1104,7 @@ export default {
         const pointsEarned = Math.floor(subtotalAfterDiscount * 0.20);
         
         // Award points to authenticated users
-        if (this.userProfile && this.userProfile.id !== 'guest' && pointsEarned > 0) {
+        if (this.userProfile && this.userProfile?.id !== 'guest' && pointsEarned > 0) {
           try {
             console.log('⭐ Awarding loyalty points:', pointsEarned, 'for order:', orderId);
             const awardResult = await loyaltyAPI.awardPoints(subtotalAfterDiscount, orderId);
@@ -1068,11 +1125,11 @@ export default {
         }
         
         // Refresh user profile to show updated points
-        if (this.userProfile && this.userProfile.id !== 'guest') {
+        if (this.userProfile && this.userProfile?.id !== 'guest') {
           try {
             console.log('🔄 Refreshing user profile to show updated points...');
             await this.loadUserProfile();
-            console.log('✅ User profile refreshed with points:', this.userProfile.loyalty_points);
+            console.log('✅ User profile refreshed with points:', this.userProfile?.loyalty_points);
           } catch (error) {
             console.error('❌ Error refreshing user profile:', error);
           }
@@ -1221,7 +1278,7 @@ export default {
                 console.log('User profile loaded:', this.userProfile);
                 
                 // Award points for successful payment (20% of subtotal after discount)
-                if (this.userProfile && this.userProfile.id !== 'guest') {
+                if (this.userProfile && this.userProfile?.id !== 'guest') {
                   const subtotalAfterDiscount = orderData.subtotal - (orderData.pointsDiscount || 0);
                   const pointsEarned = Math.floor(subtotalAfterDiscount * 0.20);
                   
@@ -1288,7 +1345,7 @@ export default {
                 try {
                   console.log('🔄 Refreshing user profile after payment return...');
                   await this.loadUserProfile();
-                  console.log('✅ User profile refreshed with points:', this.userProfile.loyalty_points);
+                  console.log('✅ User profile refreshed with points:', this.userProfile?.loyalty_points);
                 } catch (error) {
                   console.error('❌ Error refreshing user profile after payment:', error);
                 }
@@ -1451,6 +1508,14 @@ export default {
     },
     
     async loadUserProfile() {
+      // Set default profile first to prevent undefined errors
+      this.userProfile = {
+        id: 'guest',
+        email: 'guest@ramyeon.com',
+        full_name: 'Guest User',
+        loyalty_points: 0
+      };
+      
       try {
         console.log('🔍 DEBUG: Attempting to load user profile...');
         
@@ -1459,20 +1524,23 @@ export default {
         console.log('🔍 DEBUG: JWT Token exists:', !!token);
         
         if (!token) {
-          throw new Error('No JWT token found - user not logged in');
+          console.log('ℹ️ No JWT token found - using guest profile');
+          return;
         }
         
         // Try to get real customer profile from backend
         console.log('🔍 DEBUG: Calling authAPI.getProfile()...');
         const response = await authAPI.getProfile();
         console.log('🔍 DEBUG: API Response:', response);
+        console.log('🔍 DEBUG: Response type:', typeof response);
+        console.log('🔍 DEBUG: Response keys:', Object.keys(response || {}));
         
         if (response && response.customer) {
           this.userProfile = {
             id: response.customer.customer_id,
             email: response.customer.email,
             full_name: response.customer.full_name,
-            loyalty_points: response.customer.loyalty_points || 0 // Real points from database
+            loyalty_points: response.customer.loyalty_points || 0
           };
           
           console.log('✅ Real customer profile loaded:', {
@@ -1480,23 +1548,11 @@ export default {
             loyalty_points: this.userProfile.loyalty_points
           });
         } else {
-          console.error('❌ No customer data in response:', response);
-          throw new Error('No customer data received');
+          console.log('ℹ️ No customer data in response - using guest profile');
         }
       } catch (error) {
-        console.error('❌ Failed to load real customer profile:', error);
-        console.error('❌ Error details:', error.message);
-        
-        // For debugging: Use a test profile with some points
-        this.userProfile = {
-          id: 'test-user',
-          email: 'test@ramyeon.com',
-          full_name: 'Test User',
-          loyalty_points: 50 // Give test user some points for debugging
-        };
-        
-        console.log('🧪 Using test profile with points for debugging:', this.userProfile.loyalty_points);
-        console.log('💡 To fix: Make sure you are logged in and backend is running');
+        console.log('ℹ️ Using guest profile due to error:', error?.message || 'Unknown error');
+        // userProfile is already set to guest above
       }
     },
     
@@ -1593,6 +1649,158 @@ export default {
         console.log('Payment attempt tracked:', attempt);
       } catch (error) {
         console.error('Error tracking payment attempt:', error);
+      }
+    },
+    
+    // Validate cart items to ensure they have required properties
+    validateCartItems(cartItems) {
+      if (!Array.isArray(cartItems)) {
+        console.log('❌ Cart items is not an array');
+        return false;
+      }
+      
+      if (cartItems.length === 0) {
+        console.log('✅ Cart is empty, valid');
+        return true;
+      }
+      
+      const isValid = cartItems.every(item => {
+        const hasId = typeof item.id !== 'undefined' && item.id !== null && item.id !== '';
+        const hasName = typeof item.name !== 'undefined' && item.name !== null && item.name !== '';
+        const hasPrice = typeof item.price !== 'undefined' && item.price !== null && item.price > 0;
+        const hasQuantity = typeof item.quantity !== 'undefined' && item.quantity !== null && item.quantity > 0;
+        
+        console.log('🔍 Validating item:', {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          hasId,
+          hasName,
+          hasPrice,
+          hasQuantity
+        });
+        
+        return hasId && hasName && hasPrice && hasQuantity;
+      });
+      
+      console.log('🔍 Cart validation result:', isValid);
+      return isValid;
+    },
+    
+    // Clear all stale cart data from localStorage
+    clearStaleCartData() {
+      console.log('🧹 Clearing all stale cart data...');
+      localStorage.removeItem('ramyeon_cart');
+      localStorage.removeItem('ramyeon_pending_order');
+      localStorage.removeItem('ramyeon_payment_history');
+      console.log('✅ Stale cart data cleared');
+    },
+    
+    // Clear cart manually
+    clearCart() {
+      console.log('🗑️ Manually clearing cart...');
+      this.cartItems = [];
+      localStorage.removeItem('ramyeon_cart');
+      localStorage.removeItem('ramyeon_pending_order');
+      localStorage.removeItem('ramyeon_payment_history');
+      localStorage.removeItem('ramyeon_orders');
+      
+      // Clear user-specific orders
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('ramyeon_orders_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      console.log('✅ Cart cleared manually');
+      alert('Cart cleared! The page will refresh to show the empty cart.');
+      // Force refresh to show empty cart
+      window.location.reload();
+    },
+    
+    // Force clear cart on next load
+    forceClearCart() {
+      console.log('🗑️ Setting force clear flag...');
+      localStorage.setItem('ramyeon_force_clear_cart', 'true');
+      alert('Cart will be cleared on next page load. Refreshing now...');
+      window.location.reload();
+    },
+    
+    // Skip user profile loading (for debugging)
+    skipUserProfile() {
+      console.log('⏭️ Skipping user profile loading...');
+      this.userProfile = {
+        id: 'guest',
+        email: 'guest@ramyeon.com',
+        full_name: 'Guest User',
+        loyalty_points: 0
+      };
+      console.log('✅ Guest profile set, no API calls made');
+    },
+    
+    // Force login (for debugging)
+    forceLogin() {
+      console.log('🔐 Forcing login...');
+      
+      // Check if already logged in
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        alert('✅ You are already logged in!\n\nToken exists: ' + token.substring(0, 20) + '...\n\nTry refreshing the page or clearing your browser cache.');
+        return;
+      }
+      
+      // Clear any stale data
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user_id');
+      
+      alert('🔐 Please log in to access your loyalty points and promotions!\n\n1. Go to the login page\n2. Enter your credentials\n3. Come back to the cart\n\nYour 104 points will be available after login!');
+      
+      // Navigate to login (if you have a login page)
+      // window.location.hash = '#/login';
+    },
+    
+    // Test backend connection
+    async testBackendConnection() {
+      console.log('🔧 Testing backend connection...');
+      
+      // First check if user is logged in
+      const token = localStorage.getItem('access_token');
+      console.log('🔍 JWT Token exists:', !!token);
+      console.log('🔍 Token value:', token ? token.substring(0, 20) + '...' : 'None');
+      
+      if (!token) {
+        alert('❌ No JWT token found! You need to log in first.\n\nGo to the login page and log in with your credentials.');
+        return;
+      }
+      
+      try {
+        // Test auth endpoint
+        console.log('🔍 Testing auth endpoint...');
+        const authResponse = await authAPI.getProfile();
+        console.log('✅ Auth API Response:', authResponse);
+        
+        // Test promotions endpoint
+        console.log('🔍 Testing promotions endpoint...');
+        const promotionsResponse = await promotionsAPI.getAll({ limit: 5 });
+        console.log('✅ Promotions API Response:', promotionsResponse);
+        
+        // Test loyalty endpoint
+        console.log('🔍 Testing loyalty endpoint...');
+        const loyaltyResponse = await loyaltyAPI.healthCheck();
+        console.log('✅ Loyalty API Response:', loyaltyResponse);
+        
+        alert('✅ Backend connection test completed! Check console for details.');
+      } catch (error) {
+        console.error('❌ Backend connection test failed:', error);
+        
+        if (error.message && error.message.includes('401')) {
+          alert('❌ Authentication failed! Your login session has expired.\n\nPlease log out and log in again to get a fresh token.');
+        } else {
+          alert('❌ Backend connection test failed! Check console for details.');
+        }
       }
     },
     
@@ -1809,31 +2017,50 @@ export default {
       }
     }
     
-    // Load user profile first
-    this.loadUserProfile();
+    // Load user profile first with error protection
+    this.loadUserProfile().catch(error => {
+      console.error('❌ Critical error in loadUserProfile:', error);
+      // Ensure userProfile is always set
+      this.userProfile = {
+        id: 'guest',
+        email: 'guest@ramyeon.com',
+        full_name: 'Guest User',
+        loyalty_points: 0
+      };
+    });
     
     // Load cart items from localStorage if available
     const savedCart = localStorage.getItem('ramyeon_cart');
     console.log('📦 Loading cart from localStorage:', savedCart ? 'Found' : 'Empty');
     
-    if (savedCart) {
+    // Check if we should force clear the cart (for debugging)
+    const forceClear = localStorage.getItem('ramyeon_force_clear_cart');
+    if (forceClear === 'true') {
+      console.log('🧹 Force clearing cart as requested');
+      this.clearStaleCartData();
+      localStorage.removeItem('ramyeon_force_clear_cart');
+      this.cartItems = [];
+    } else if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
         console.log('📋 Parsed cart:', parsedCart.length, 'items');
         
-        // Only load if it's a valid array
-        if (Array.isArray(parsedCart)) {
+        // Log the actual cart data for debugging
+        console.log('🔍 Cart data:', parsedCart);
+        
+        // Only load if it's a valid array and has valid items
+        if (Array.isArray(parsedCart) && this.validateCartItems(parsedCart)) {
           this.cartItems = parsedCart;
           console.log('✅ Cart loaded:', this.cartItems.length, 'items');
         } else {
           // If invalid, clear it
           console.warn('⚠️ Invalid cart data, clearing');
-          localStorage.removeItem('ramyeon_cart');
+          this.clearStaleCartData();
           this.cartItems = [];
         }
       } catch (error) {
         console.error('❌ Error loading cart:', error);
-        localStorage.removeItem('ramyeon_cart');
+        this.clearStaleCartData();
         this.cartItems = [];
       }
     } else {

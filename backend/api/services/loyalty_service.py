@@ -183,3 +183,6 @@ class LoyaltyService:
             logger.error(f"Error getting points history: {str(e)}")
             raise Exception(f"Error getting points history: {str(e)}")
 
+
+
+
