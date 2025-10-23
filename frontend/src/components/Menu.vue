@@ -3,7 +3,7 @@
     <h1>Menu</h1>
     
     <!-- Loading State -->
-    <div v-if="loading" class="loading-state">
+    <div v-if="loading || isLoading" class="loading-state">
       <p>Loading menu...</p>
     </div>
 
@@ -24,37 +24,37 @@
         </button>
         <button
           v-for="category in categories"
-          :key="category.id"
-          :class="{ active: selectedCategory === category.id }"
-          @click="selectCategory(category.id, category.name)"
+          :key="category._id"
+          :class="{ active: selectedCategory === category._id }"
+          @click="selectCategory(category._id, category.category_name)"
         >
-          {{ category.name }}
+          {{ category.category_name }}
         </button>
       </div>
 
-      <div v-if="loadingProducts" class="loading-products">
+      <div v-if="loadingProducts || isProductsLoading" class="loading-products">
         <p>Loading products...</p>
       </div>
 
-      <div v-else-if="products.length === 0" class="no-products">
+      <div v-else-if="displayProducts.length === 0" class="no-products">
         <p>No products available in this category.</p>
       </div>
 
       <div v-else class="products-grid">
         <div
           class="product-card"
-          v-for="product in products"
-          :key="product.id"
+          v-for="product in displayProducts"
+          :key="product.id || product._id"
         >
           <img 
-            :src="product.image || require('../assets/Home/BigRamen.png')" 
-            :alt="product.name"
+            :src="product.image_url || product.image || require('../assets/Home/BigRamen.png')" 
+            :alt="product.product_name || product.name"
             @error="handleImageError"
           />
           <div class="product-info">
-            <h3>{{ product.name }}</h3>
-            <p>{{ product.description }}</p>
-            <div class="price">₱{{ product.price.toFixed(2) }}</div>
+            <h3>{{ product.product_name || product.name }}</h3>
+            <p>{{ product.description || 'No description available' }}</p>
+            <div class="price">₱{{ (product.selling_price || product.price).toFixed(2) }}</div>
           </div>
           <button class="add-btn" @click="addToCart(product)">+</button>
         </div>
@@ -82,8 +82,8 @@
 
 <script>
 import './Menu.css';
-import { categoriesAPI } from '../services/apiCategories.js';
-import { productsAPI } from '../services/apiProducts.js';
+import { useProducts } from '../composables/api/useProducts.js';
+import { useCategories } from '../composables/api/useCategories.js';
 
 export default {
   name: "MenuPage",
@@ -93,12 +93,22 @@ export default {
       required: true,
     },
   },
+  setup() {
+    // Initialize composables
+    const products = useProducts();
+    const categories = useCategories();
+    
+    return {
+      // Expose composable methods and state
+      ...products,
+      ...categories
+    };
+  },
   data() {
     return {
-      categories: [],
+      // Keep local state for UI-specific data
       selectedCategory: 'All',
       selectedCategoryName: null,
-      products: [],
       loading: true,
       loadingProducts: false,
       error: null,
@@ -110,6 +120,13 @@ export default {
       }
     };
   },
+  computed: {
+    // Ensure products are reactive from composable
+    displayProducts() {
+      console.log('🔄 Display products computed:', this.products?.length || 0);
+      return this.products || [];
+    }
+  },
   async mounted() {
     await this.fetchData();
   },
@@ -119,10 +136,11 @@ export default {
       this.error = null;
       
       try {
-        // Fetch categories
-        await this.fetchCategories();
+        // Fetch categories using composable
+        await this.getCategories();
+        console.log('📂 Categories loaded:', this.categories);
         
-        // Fetch all products initially
+        // Fetch all products initially using composable
         await this.fetchProducts();
         
         this.loading = false;
@@ -133,25 +151,6 @@ export default {
       }
     },
 
-    async fetchCategories() {
-      try {
-        const response = await categoriesAPI.getAll();
-        
-        if (response.success && response.data && response.data.categories) {
-          this.categories = response.data.categories.map(cat => ({
-            id: cat._id,
-            name: cat.category_name,
-            description: cat.description,
-            productCount: cat.product_count,
-            image: cat.image_url
-          }));
-        }
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-        throw new Error('Failed to load categories');
-      }
-    },
-
     async fetchProducts(page = 1) {
       this.loadingProducts = true;
       
@@ -159,36 +158,26 @@ export default {
         let response;
         
         if (this.selectedCategory === 'All') {
-          // Fetch all products
-          response = await productsAPI.getAll({
+          // Fetch all products using composable
+          response = await this.getProducts({
             page: page,
             limit: this.pagination.items_per_page
           });
         } else {
-          // Fetch products by category
-          response = await productsAPI.getByCategory(
-            this.selectedCategory,
-            null,
-            page,
-            this.pagination.items_per_page
-          );
+          // Fetch products by category using composable
+          console.log('🔍 Fetching products for category:', this.selectedCategory);
+          response = await this.getProducts({
+            category: this.selectedCategory,
+            page: page,
+            limit: this.pagination.items_per_page
+          });
         }
         
         if (response.success && response.data) {
-          // Map products to component format
-          this.products = (response.data.products || []).map(product => ({
-            // Use product_id, or fallback to _id, or id (MongoDB uses _id)
-            id: product.product_id || product._id || product.id,
-            name: product.product_name,
-            price: parseFloat(product.selling_price),
-            description: product.description || 'No description available',
-            image: product.image_url,
-            category: product.category_name,
-            subcategory: product.subcategory_name,
-            stock: product.stock_quantity
-          }));
-
-          // Update pagination
+          // Products are already in the composable state
+          console.log('📦 Products updated in composable:', response.data.length);
+          
+          // Update pagination if available
           if (response.data.pagination) {
             this.pagination = {
               current_page: response.data.pagination.current_page,
@@ -197,17 +186,20 @@ export default {
               items_per_page: response.data.pagination.items_per_page
             };
           }
+        } else {
+          console.warn('⚠️ No products data received:', response);
         }
         
         this.loadingProducts = false;
       } catch (err) {
         console.error('Error fetching products:', err);
-        this.products = [];
         this.loadingProducts = false;
       }
     },
 
     async selectCategory(categoryId, categoryName) {
+      console.log('🎯 Selecting category:', categoryId, categoryName);
+      console.log('🎯 Available categories:', this.categories);
       this.selectedCategory = categoryId;
       this.selectedCategoryName = categoryName;
       this.pagination.current_page = 1; // Reset to first page
@@ -223,7 +215,20 @@ export default {
     },
 
     addToCart(product) {
-      this.onAddToCart(product);
+      // Normalize product data for cart
+      const cartProduct = {
+        id: product.product_id || product._id || product.id,
+        product_id: product.product_id || product._id || product.id,
+        name: product.product_name || product.name,
+        price: parseFloat(product.selling_price || product.price),
+        description: product.description || 'No description available',
+        image: product.image_url || product.image,
+        category: product.category_name || product.category,
+        subcategory: product.subcategory_name || product.subcategory,
+        stock: product.stock_quantity || product.stock || 0
+      };
+      
+      this.onAddToCart(cartProduct);
     },
 
     handleImageError(event) {

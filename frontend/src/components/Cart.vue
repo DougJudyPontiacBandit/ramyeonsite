@@ -16,14 +16,29 @@
             <div class="item-details">
               <h3>{{ item.name }}</h3>
               <p class="item-description">{{ item.description }}</p>
-              <div class="item-price">₱{{ item.price }}</div>
+              <div class="item-price-section">
+                <div class="item-price" :class="{ 'has-discount': getItemDiscount(item) > 0 }">
+                  <span v-if="getItemDiscount(item) > 0" class="original-price">₱{{ item.price }}</span>
+                  <span class="current-price">₱{{ getItemDiscountedPrice(item).toFixed(2) }}</span>
+                </div>
+                <div v-if="getItemDiscount(item) > 0" class="item-discount-info">
+                  <span class="discount-badge">{{ getItemDiscountText(item) }}</span>
+                  <span class="savings">You save ₱{{ getItemDiscount(item).toFixed(2) }}</span>
+                </div>
+              </div>
             </div>
             <div class="item-controls">
               <button class="quantity-btn" @click="decreaseQuantity(item.id)">-</button>
               <span class="quantity">{{ item.quantity }}</span>
               <button class="quantity-btn" @click="increaseQuantity(item.id)">+</button>
             </div>
-            <div class="item-total">₱{{ (item.price * item.quantity).toFixed(2) }}</div>
+            <div class="item-total">
+              <div v-if="getItemDiscount(item) > 0" class="total-with-discount">
+                <span class="original-total">₱{{ (item.price * item.quantity).toFixed(2) }}</span>
+                <span class="discounted-total">₱{{ (getItemDiscountedPrice(item) * item.quantity).toFixed(2) }}</span>
+              </div>
+              <div v-else class="regular-total">₱{{ (item.price * item.quantity).toFixed(2) }}</div>
+            </div>
             <button class="remove-btn" @click="removeItem(item.id)">×</button>
           </div>
         </div>
@@ -339,49 +354,40 @@
       </transition>
     </teleport>
     
-    <!-- Debug Buttons (Remove after testing) -->
-    <button 
-      v-if="cartItems.length > 0" 
-      @click="testModal" 
-      style="position: fixed; bottom: 20px; right: 20px; z-index: 999999; background: red; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(255,0,0,0.5);"
-    >
-      🧪 TEST MODAL
-    </button>
     
-    <button 
-      v-if="cartItems.length > 0" 
-      @click="testLoyaltyPoints" 
-      style="position: fixed; bottom: 80px; right: 20px; z-index: 999999; background: orange; color: white; padding: 15px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 12px rgba(255,152,0,0.5);"
-    >
-      ⭐ TEST POINTS
-    </button>
     
-    <!-- Even More Obvious Debug Info -->
-    <div 
-      v-if="cartItems.length > 0"
-      style="position: fixed; bottom: 150px; right: 20px; z-index: 999999; background: yellow; color: black; padding: 10px; border: 2px solid orange; border-radius: 5px; font-size: 12px; max-width: 200px;"
-    >
-      <strong>Debug Info:</strong><br>
-      showOrderConfirmation: {{ showOrderConfirmation }}<br>
-      confirmedOrder: {{ confirmedOrder ? 'Set' : 'Null' }}<br>
-      User Profile: {{ userProfile ? 'Loaded' : 'Not Loaded' }}<br>
-      Loyalty Points: {{ userProfile?.loyalty_points || 0 }}
-    </div>
   </div>
 </template>
 
 <script>
 import { paymongoAPI } from '../composables/usePaymongo.js';
 import { ordersAPI, authAPI } from '../services/api.js';
-import { promotionsAPI } from '../services/apiPromotions.js';
-import { loyaltyAPI } from '../services/apiLoyalty.js';
+import { useOnlineOrder } from '../composables/api/useOnlineOrder.js';
+import { useProducts } from '../composables/api/useProducts.js';
+import { usePromotions } from '../composables/api/usePromotions.js';
+import { useLoyalty } from '../composables/api/useLoyalty.js';
 
 export default {
   name: 'Cart',
   emits: ['setCurrentPage'],
+  setup() {
+    // Initialize composables
+    const onlineOrder = useOnlineOrder();
+    const products = useProducts();
+    const promotions = usePromotions();
+    const loyalty = useLoyalty();
+    
+    return {
+      // Expose composable methods and state
+      ...onlineOrder,
+      ...products,
+      ...promotions,
+      ...loyalty
+    };
+  },
   data() {
     return {
-      cartItems: [],
+      // Keep existing data properties for backward compatibility
       deliveryType: 'delivery',
       deliveryAddress: '',
       paymentMethod: 'cash',
@@ -417,22 +423,25 @@ export default {
     }
   },
   computed: {
+    // Use composable cart data
     subtotal() {
-      return this.cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      // Calculate subtotal using discounted prices for each item
+      return this.cartItems.reduce((total, item) => {
+        const discountedPrice = this.getItemDiscountedPrice(item);
+        return total + (discountedPrice * item.quantity);
+      }, 0);
     },
     deliveryFee() {
-      return this.deliveryType === 'delivery' ? 50 : 0;
+      return this.cartShipping;
     },
     serviceFee() {
-      return this.subtotal * 0.05; // 5% service fee
+      return this.cartTax;
     },
     total() {
-      return this.subtotal + this.deliveryFee + this.serviceFee;
+      return this.cartTotal;
     },
     finalTotal() {
-      // Total after applying both points and promotion discounts
-      const totalAfterDiscount = this.total - this.pointsDiscount - this.promotionDiscount;
-      return totalAfterDiscount > 0 ? totalAfterDiscount : 0;
+      return this.cartTotalWithAdjustments;
     },
     canCheckout() {
       const hasItems = this.cartItems.length > 0;
@@ -442,74 +451,85 @@ export default {
     }
   },
   methods: {
-    increaseQuantity(itemId) {
+    // Use composable cart methods
+    async increaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
-        item.quantity++;
+        await this.updateCartItemQuantity(item.product_id || item.id, item.quantity + 1);
       }
     },
-    decreaseQuantity(itemId) {
+    async decreaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item && item.quantity > 1) {
-        item.quantity--;
+        await this.updateCartItemQuantity(item.product_id || item.id, item.quantity - 1);
       }
     },
-    removeItem(itemId) {
-      this.cartItems = this.cartItems.filter(item => item.id !== itemId);
-      // Recalculate discounts if applied
-      if (this.appliedPromotion) {
-        this.calculatePromotionDiscount();
-      }
-      if (this.useLoyaltyPoints) {
-        this.calculatePointsDiscount();
+    async removeItem(itemId) {
+      const item = this.cartItems.find(item => item.id === itemId);
+      if (item) {
+        await this.removeFromCart(item.product_id || item.id);
       }
     },
     
-    // Loyalty Points Methods
-    onPointsToggle() {
+    // Loyalty Points Methods - Use composable
+    async onPointsToggle() {
       if (this.useLoyaltyPoints) {
         // Initialize with minimum points
-        this.pointsToRedeem = Math.min(40, this.userProfile.loyalty_points);
-        this.calculatePointsDiscount();
+        this.pointsToRedeem = Math.min(40, this.loyaltyBalance);
+        await this.calculatePointsDiscount();
       } else {
         this.pointsToRedeem = 0;
         this.pointsDiscount = 0;
+        this.removeLoyaltyPoints();
       }
     },
     
-    onPointsChange() {
-      this.calculatePointsDiscount();
+    async onPointsChange() {
+      await this.calculatePointsDiscount();
     },
     
-    calculatePointsDiscount() {
+    async calculatePointsDiscount() {
       if (!this.useLoyaltyPoints || !this.pointsToRedeem) {
         this.pointsDiscount = 0;
         return;
       }
       
-      // Calculate max points that can be used (80 points maximum per transaction)
-      const maxDiscount = Math.min(20, this.subtotal * 0.20); // Max ₱20 or 20% of subtotal
-      this.maxPointsToRedeem = Math.min(
-        this.userProfile.loyalty_points,
-        Math.floor(maxDiscount * 4), // Convert back to points (4 points = ₱1)
-        80 // Maximum 80 points per transaction
-      );
-      
-      // Ensure points don't exceed maximum
-      if (this.pointsToRedeem > this.maxPointsToRedeem) {
-        this.pointsToRedeem = this.maxPointsToRedeem;
+      try {
+        // Use composable to calculate points discount
+        const result = await this.calculatePointsDiscount(
+          this.pointsToRedeem, 
+          { id: this.userProfile?.id }, 
+          this.currentTier
+        );
+        
+        if (result.success) {
+          this.pointsDiscount = result.data.discount_amount;
+          
+          // Calculate max points that can be used
+          const maxDiscount = Math.min(20, this.subtotal * 0.20);
+          this.maxPointsToRedeem = Math.min(
+            this.loyaltyBalance,
+            Math.floor(maxDiscount * 4),
+            80
+          );
+          
+          // Ensure points don't exceed maximum
+          if (this.pointsToRedeem > this.maxPointsToRedeem) {
+            this.pointsToRedeem = this.maxPointsToRedeem;
+          }
+          
+          console.log('⭐ Points calculation:', {
+            pointsToRedeem: this.pointsToRedeem,
+            pointsDiscount: this.pointsDiscount,
+            maxPointsToRedeem: this.maxPointsToRedeem,
+            subtotal: this.subtotal,
+            maxPerTransaction: 80
+          });
+        }
+      } catch (error) {
+        console.error('❌ Points calculation error:', error);
+        this.pointsDiscount = 0;
       }
-      
-      // Calculate discount (4 points = ₱1)
-      this.pointsDiscount = this.pointsToRedeem / 4;
-      
-      console.log('⭐ Points calculation:', {
-        pointsToRedeem: this.pointsToRedeem,
-        pointsDiscount: this.pointsDiscount,
-        maxPointsToRedeem: this.maxPointsToRedeem,
-        subtotal: this.subtotal,
-        maxPerTransaction: 80
-      });
     },
     
     async applyPromoCode() {
@@ -523,30 +543,20 @@ export default {
       try {
         console.log('🎁 Applying promo code:', this.promoCode);
         
-        // Fetch promotion details by ID
-        const response = await promotionsAPI.getById(this.promoCode.trim().toUpperCase());
+        // Use composable to apply promotion
+        const result = await this.applyPromotionToCart(this.promoCode.trim());
         
-        if (response.success && response.promotion) {
-          const promotion = response.promotion;
-          console.log('✅ Found promotion:', promotion);
+        if (result.success) {
+          this.appliedPromotion = result.data.promotion;
+          this.promotionDiscount = result.data.discount_amount;
+          this.promoError = null;
+          console.log('✅ Promotion applied! Discount:', this.promotionDiscount);
           
-          // Calculate discount for this order
-          await this.calculatePromotionDiscount(promotion);
-          
-          if (this.promotionDiscount > 0) {
-            this.appliedPromotion = promotion;
-            this.promoError = null;
-            console.log('✅ Promotion applied! Discount:', this.promotionDiscount);
-            
-            // Show success message
-            this.showSuccessNotification(`Promo code applied! You saved ₱${this.promotionDiscount.toFixed(2)}`);
-          } else {
-            this.promoError = 'This promotion is not applicable to your current order.';
-            console.warn('⚠️ Promotion not applicable to order');
-          }
+          // Show success message
+          this.showSuccessNotification(`Promo code applied! You saved ₱${this.promotionDiscount.toFixed(2)}`);
         } else {
-          this.promoError = 'Invalid promo code. Please check and try again.';
-          console.warn('⚠️ Promotion not found');
+          this.promoError = result.error || 'Invalid promo code. Please check and try again.';
+          console.warn('⚠️ Promotion not found or not applicable');
         }
       } catch (error) {
         console.error('❌ Error applying promo code:', error);
@@ -556,46 +566,15 @@ export default {
       }
     },
     
-    async calculatePromotionDiscount(promotion = null) {
-      const promo = promotion || this.appliedPromotion;
-      
-      if (!promo) {
-        this.promotionDiscount = 0;
-        return;
-      }
-      
-      try {
-        // Prepare order data for discount calculation
-        const orderData = {
-          total_amount: this.total,
-          items: this.cartItems.map(item => ({
-            product_id: item.product_id || item.id,
-            category_id: item.category_id || null,
-            price: item.price,
-            quantity: item.quantity
-          }))
-        };
-        
-        console.log('📊 Calculating discount for order:', orderData);
-        
-        // Call backend to calculate discount
-        const response = await promotionsAPI.calculateDiscount(orderData);
-        
-        if (response.success && response.discount_applied) {
-          this.promotionDiscount = response.discount_applied;
-          console.log('✅ Discount calculated:', this.promotionDiscount);
-        } else {
-          this.promotionDiscount = 0;
-          console.log('ℹ️ No discount applicable');
-        }
-      } catch (error) {
-        console.error('❌ Error calculating discount:', error);
-        this.promotionDiscount = 0;
-      }
-    },
     
-    removePromoCode() {
+    async removePromoCode() {
       console.log('🗑️ Removing promo code');
+      
+      // Use composable to remove promotion
+      if (this.appliedPromotion) {
+        await this.removePromotionFromCart(this.appliedPromotion.id);
+      }
+      
       this.appliedPromotion = null;
       this.promotionDiscount = 0;
       this.promoCode = '';
@@ -617,6 +596,157 @@ export default {
       }
       
       return promotion.description || 'Discount applied';
+    },
+    
+    // Per-item discount calculation methods
+    getItemDiscount(item) {
+      console.log('🔍 Checking discount for item:', item.name, 'Price:', item.price);
+      console.log('🎁 Available promotions:', this.activePromotions.length);
+      
+      // Check if item is eligible for any active promotion
+      const applicablePromotion = this.getApplicablePromotionForItem(item);
+      console.log('✅ Applicable promotion for', item.name, ':', applicablePromotion);
+      
+      if (!applicablePromotion) {
+        console.log('❌ No applicable promotion for', item.name);
+        return 0;
+      }
+      
+      const originalPrice = parseFloat(item.price);
+      let discountAmount = 0;
+      
+      if (applicablePromotion.type === 'percentage') {
+        discountAmount = originalPrice * (applicablePromotion.discount_value / 100);
+        console.log('📊 Percentage discount:', applicablePromotion.discount_value + '%', 'Amount:', discountAmount);
+      } else if (applicablePromotion.type === 'fixed_amount') {
+        discountAmount = Math.min(applicablePromotion.discount_value, originalPrice);
+        console.log('💰 Fixed amount discount:', applicablePromotion.discount_value, 'Amount:', discountAmount);
+      }
+      
+      const finalDiscount = Math.max(0, discountAmount);
+      console.log('🎯 Final discount for', item.name, ':', finalDiscount);
+      return finalDiscount;
+    },
+    
+    getItemDiscountedPrice(item) {
+      const originalPrice = parseFloat(item.price);
+      const discount = this.getItemDiscount(item);
+      return Math.max(0, originalPrice - discount);
+    },
+    
+    getItemDiscountText(item) {
+      const applicablePromotion = this.getApplicablePromotionForItem(item);
+      if (!applicablePromotion) return '';
+      
+      if (applicablePromotion.type === 'percentage') {
+        return `${applicablePromotion.discount_value}% OFF`;
+      } else if (applicablePromotion.type === 'fixed_amount') {
+        return `₱${applicablePromotion.discount_value} OFF`;
+      }
+      
+      return 'DISCOUNT';
+    },
+    
+    getApplicablePromotionForItem(item) {
+      console.log('🔍 Checking promotions for item:', item.name);
+      console.log('📋 Active promotions count:', this.activePromotions.length);
+      
+      // Check if any active promotion applies to this item
+      for (const promotion of this.activePromotions) {
+        console.log('🎁 Checking promotion:', promotion.name, 'Type:', promotion.type, 'Status:', promotion.status);
+        const isEligible = this.isItemEligibleForPromotion(item, promotion);
+        console.log('✅ Is eligible for', promotion.name, ':', isEligible);
+        
+        if (isEligible) {
+          console.log('🎯 Found applicable promotion:', promotion.name);
+          return promotion;
+        }
+      }
+      console.log('❌ No applicable promotion found for', item.name);
+      return null;
+    },
+    
+    isItemEligibleForPromotion(item, promotion) {
+      console.log('🔍 Checking eligibility for', item.name, 'with promotion', promotion.name);
+      
+      // Check if promotion is active
+      if (promotion.status !== 'active') {
+        console.log('❌ Promotion not active:', promotion.status);
+        return false;
+      }
+      
+      // Check date validity
+      const now = new Date();
+      const startDate = new Date(promotion.start_date);
+      const endDate = new Date(promotion.end_date);
+      
+      console.log('📅 Date check - Now:', now, 'Start:', startDate, 'End:', endDate);
+      
+      if (now < startDate || now > endDate) {
+        console.log('❌ Promotion outside date range');
+        return false;
+      }
+      
+      // Check target type and IDs
+      console.log('🎯 Target type:', promotion.target_type, 'Target IDs:', promotion.target_ids);
+      
+      if (promotion.target_type === 'all') {
+        console.log('✅ Promotion applies to all items');
+        return true;
+      } else if (promotion.target_type === 'category') {
+        // Check if item belongs to target category
+        const isCategoryMatch = promotion.target_ids && promotion.target_ids.includes(item.category_id);
+        console.log('📂 Category check - Item category:', item.category_id, 'Target IDs:', promotion.target_ids, 'Match:', isCategoryMatch);
+        
+        // If category match failed, try drinks keyword matching for drinks promotions
+        if (!isCategoryMatch && promotion.name && promotion.name.toLowerCase().includes('drinks')) {
+          console.log('🔍 Category match failed, trying drinks keyword matching...');
+          const itemName = item.name.toLowerCase();
+          const itemDescription = (item.description || '').toLowerCase();
+          const drinksKeywords = ['drink', 'beverage', 'juice', 'soda', 'water', 'tea', 'coffee', 'milk', '7 up', 'coke', 'pepsi', 'alaska'];
+          const isDrinksMatch = drinksKeywords.some(keyword => 
+            itemName.includes(keyword) || itemDescription.includes(keyword)
+          );
+          console.log('🥤 Drinks keyword check - Keywords:', drinksKeywords, 'Item name:', itemName, 'Match:', isDrinksMatch);
+          return isDrinksMatch;
+        }
+        
+        return isCategoryMatch;
+      } else if (promotion.target_type === 'product') {
+        // Check if item is in target products
+        const isProductMatch = promotion.target_ids && promotion.target_ids.includes(item.product_id || item.id);
+        console.log('🛍️ Product check - Item ID:', item.product_id || item.id, 'Match:', isProductMatch);
+        return isProductMatch;
+      } else if (promotion.target_type === 'specific') {
+        // Check specific criteria (e.g., drinks, ramyeon, etc.)
+        const itemName = item.name.toLowerCase();
+        const itemDescription = (item.description || '').toLowerCase();
+        
+        console.log('🔍 Specific check - Item name:', itemName, 'Description:', itemDescription);
+        
+        // Check for drinks promotion
+        if (promotion.name && promotion.name.toLowerCase().includes('drinks')) {
+          const drinksKeywords = ['drink', 'beverage', 'juice', 'soda', 'water', 'tea', 'coffee', 'milk', '7 up', 'coke', 'pepsi'];
+          const isDrinksMatch = drinksKeywords.some(keyword => 
+            itemName.includes(keyword) || itemDescription.includes(keyword)
+          );
+          console.log('🥤 Drinks check - Keywords:', drinksKeywords, 'Match:', isDrinksMatch);
+          return isDrinksMatch;
+        }
+        
+        // Check for ramyeon promotion
+        if (promotion.name && promotion.name.toLowerCase().includes('ramyeon')) {
+          const ramyeonKeywords = ['ramyeon', 'ramen', 'noodle', 'soup'];
+          const isRamyeonMatch = ramyeonKeywords.some(keyword => 
+            itemName.includes(keyword) || itemDescription.includes(keyword)
+          );
+          console.log('🍜 Ramyeon check - Keywords:', ramyeonKeywords, 'Match:', isRamyeonMatch);
+          return isRamyeonMatch;
+        }
+      }
+      
+      console.log('❌ No matching criteria found');
+      return false;
     },
     
     showSuccessNotification(message) {
@@ -820,28 +950,36 @@ export default {
         // Track payment attempt
         this.trackPaymentAttempt(orderId, 'initiated');
         
-        // Save current cart items and total before clearing
-        const orderItems = [...this.cartItems];
-        const orderTotal = this.finalTotal; // Use final total with discount
-        const promotionInfo = this.appliedPromotion ? {
-          promotion_id: this.appliedPromotion.promotion_id,
-          promotion_name: this.appliedPromotion.name,
-          discount_amount: this.promotionDiscount
-        } : null;
+        // Prepare order data using composable
+        const orderData = {
+          id: orderId,
+          user: this.userProfile,
+          items: this.cartItems,
+          total_amount: this.finalTotal,
+          delivery_type: this.deliveryType,
+          delivery_address: this.deliveryAddress,
+          payment_method: this.paymentMethod,
+          special_instructions: this.specialInstructions,
+          promotions: this.appliedPromotion ? [this.appliedPromotion.id] : [],
+          loyalty_points: this.useLoyaltyPoints ? this.pointsToRedeem : 0
+        };
         
-        const loyaltyPointsInfo = this.useLoyaltyPoints ? {
-          points_redeemed: this.pointsToRedeem,
-          points_discount: this.pointsDiscount,
-          points_earned: Math.floor((this.subtotal - this.pointsDiscount) * 0.20) // 20% of subtotal after points discount
-        } : null;
+        // Use composable to create order
+        const result = await this.createOrder(orderData);
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create order');
+        }
+        
+        // Order created successfully
         
         console.log('🛒 Starting checkout:', {
           orderId,
           paymentMethod: this.paymentMethod,
           deliveryType: this.deliveryType,
-          total: orderTotal,
-          promotion: promotionInfo,
-          loyaltyPoints: loyaltyPointsInfo
+          total: this.finalTotal,
+          promotion: this.appliedPromotion,
+          loyaltyPoints: this.useLoyaltyPoints ? this.pointsToRedeem : 0
         });
         
         // Process payment based on payment method
@@ -862,7 +1000,7 @@ export default {
               paymentReference = gcashResult.data.id;
               this.trackPaymentAttempt(orderId, 'redirected', 'gcash');
               // Store pending order before redirect
-              this.storePendingOrder(orderId, orderItems, orderTotal, paymentReference, paymentStatus);
+              this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to GCash checkout
               console.log('✅ Redirecting to GCash:', gcashResult.data.attributes.redirect.checkout_url);
               window.location.href = gcashResult.data.attributes.redirect.checkout_url;
@@ -889,7 +1027,7 @@ export default {
               paymentReference = paymayaResult.data.id;
               this.trackPaymentAttempt(orderId, 'redirected', 'paymaya');
               // Store pending order before redirect
-              this.storePendingOrder(orderId, orderItems, orderTotal, paymentReference, paymentStatus);
+              this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to PayMaya checkout
               console.log('✅ Redirecting to PayMaya:', paymayaResult.data.attributes.redirect.checkout_url);
               window.location.href = paymayaResult.data.attributes.redirect.checkout_url;
@@ -916,7 +1054,7 @@ export default {
               paymentReference = cardResult.data.id;
               this.trackPaymentAttempt(orderId, 'redirected', 'card');
               // Store pending order before redirect
-              this.storePendingOrder(orderId, orderItems, orderTotal, paymentReference, paymentStatus);
+              this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to card payment checkout
               console.log('✅ Redirecting to Card payment:', cardResult.data.attributes.redirect.checkout_url);
               window.location.href = cardResult.data.attributes.redirect.checkout_url;
@@ -943,7 +1081,7 @@ export default {
               paymentReference = grabpayResult.data.id;
               this.trackPaymentAttempt(orderId, 'redirected', 'grabpay');
               // Store pending order before redirect
-              this.storePendingOrder(orderId, orderItems, orderTotal, paymentReference, paymentStatus);
+              this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to GrabPay QR checkout
               console.log('✅ Redirecting to GrabPay:', grabpayResult.data.attributes.redirect.checkout_url);
               window.location.href = grabpayResult.data.attributes.redirect.checkout_url;
@@ -961,9 +1099,9 @@ export default {
         }
         
         // Create order data
-        const orderData = {
+        const localOrderData = {
           id: orderId,
-          items: orderItems,
+          items: this.cartItems,
           deliveryType: this.deliveryType,
           deliveryAddress: this.deliveryAddress,
           paymentMethod: this.paymentMethod,
@@ -973,9 +1111,9 @@ export default {
           serviceFee: this.serviceFee,
           pointsDiscount: this.pointsDiscount,
           promotionDiscount: this.promotionDiscount,
-          promotion: promotionInfo,
-          loyaltyPoints: loyaltyPointsInfo,
-          total: orderTotal,
+          promotion: this.appliedPromotion,
+          loyaltyPoints: this.useLoyaltyPoints ? this.pointsToRedeem : 0,
+          total: this.finalTotal,
           orderTime: new Date().toISOString(),
           status: paymentStatus === 'succeeded' ? 'confirmed' : 'pending',
           paymentReference: paymentReference,
@@ -1010,7 +1148,10 @@ export default {
         if (this.userProfile && this.userProfile.id !== 'guest' && this.useLoyaltyPoints && this.pointsToRedeem > 0) {
           try {
             console.log('⭐ Redeeming loyalty points:', this.pointsToRedeem);
-            const redeemResult = await loyaltyAPI.redeemPoints(this.pointsToRedeem, orderId);
+            const redeemResult = await this.redeemPoints(this.pointsToRedeem, this.userProfile.id, {
+              order_id: orderId,
+              description: `Points redeemed for order #${orderId}`
+            });
             console.log('✅ Points redeemed:', redeemResult);
           } catch (loyaltyError) {
             console.error('❌ Loyalty points redemption error:', loyaltyError);
@@ -1022,15 +1163,15 @@ export default {
         const userId = this.userProfile?.id || this.userProfile?.email || 'guest';
         const userOrdersKey = `ramyeon_orders_${userId}`;
         const orders = JSON.parse(localStorage.getItem(userOrdersKey) || '[]');
-        orders.push(orderData);
+        orders.push(localOrderData);
         localStorage.setItem(userOrdersKey, JSON.stringify(orders));
         
         // Also save to global orders for backwards compatibility
         const allOrders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-        allOrders.push(orderData);
+        allOrders.push(localOrderData);
         localStorage.setItem('ramyeon_orders', JSON.stringify(allOrders));
         
-        console.log('✅ Order saved successfully:', orderData.id, 'for user:', userId);
+        console.log('✅ Order saved successfully:', localOrderData.id, 'for user:', userId);
         
         // Clear cart completely
         console.log('🧹 Clearing cart - before:', this.cartItems.length);
@@ -1050,7 +1191,10 @@ export default {
         if (this.userProfile && this.userProfile.id !== 'guest' && pointsEarned > 0) {
           try {
             console.log('⭐ Awarding loyalty points:', pointsEarned, 'for order:', orderId);
-            const awardResult = await loyaltyAPI.awardPoints(subtotalAfterDiscount, orderId);
+            const awardResult = await this.awardPoints(pointsEarned, this.userProfile.id, {
+              order_id: orderId,
+              description: `Points earned from order #${orderId}`
+            });
             console.log('✅ Points awarded:', awardResult);
             
             // Update user profile with new points
@@ -1080,13 +1224,13 @@ export default {
         
         // Show confirmation modal
         this.confirmedOrder = {
-          id: orderData.id,
-          total: orderTotal.toFixed(2),
+          id: localOrderData.id,
+          total: this.finalTotal.toFixed(2),
           paymentMethod: this.paymentMethod,
           deliveryType: this.deliveryType,
           paymentStatus: paymentStatus,
           pointsEarned: pointsEarned,
-          pointsUsed: loyaltyPointsInfo ? loyaltyPointsInfo.points_redeemed : 0
+          pointsUsed: this.useLoyaltyPoints ? this.pointsToRedeem : 0
         };
         
         console.log('🎉 Showing order confirmation modal');
@@ -1228,12 +1372,15 @@ export default {
                   if (pointsEarned > 0) {
                     try {
                       console.log('⭐ Awarding loyalty points for payment return:', pointsEarned);
-                      const awardResult = await loyaltyAPI.awardPoints(subtotalAfterDiscount, orderId);
+                      const awardResult = await this.awardPoints(pointsEarned, this.userProfile.id, {
+                        order_id: orderId,
+                        description: `Points earned from order #${orderId} (payment return)`
+                      });
                       console.log('✅ Points awarded on payment return:', awardResult);
                       
                       // Update user profile with new points
-                      if (awardResult.success && awardResult.award) {
-                        this.userProfile.loyalty_points = awardResult.award.total_points;
+                      if (awardResult.success && awardResult.data) {
+                        this.userProfile.loyalty_points = this.loyaltyBalance;
                         console.log('👤 Updated user points after payment:', this.userProfile.loyalty_points);
                         
                         // Force UI update to show new points
@@ -1379,50 +1526,20 @@ export default {
       console.log('==========================================');
     },
     
-    // Test loyalty points system
-    testLoyaltyPoints() {
-      console.log('==========================================');
-      console.log('⭐ TESTING LOYALTY POINTS SYSTEM');
-      console.log('==========================================');
-      
-      console.log('Current user profile:', this.userProfile);
-      console.log('Loyalty points:', this.userProfile?.loyalty_points || 0);
-      console.log('Use loyalty points:', this.useLoyaltyPoints);
-      console.log('Points to redeem:', this.pointsToRedeem);
-      console.log('Points discount:', this.pointsDiscount);
-      console.log('Max points to redeem:', this.maxPointsToRedeem);
-      
-      // Force enable loyalty points for testing
-      if (!this.useLoyaltyPoints) {
-        this.useLoyaltyPoints = true;
-        this.pointsToRedeem = 40; // Minimum points
-        this.calculatePointsDiscount();
-        console.log('✅ Enabled loyalty points for testing');
-      }
-      
-      // Show current state
-      alert(`Loyalty Points Test:\n\n` +
-            `User Profile: ${this.userProfile ? 'Loaded' : 'Not Loaded'}\n` +
-            `Loyalty Points: ${this.userProfile?.loyalty_points || 0}\n` +
-            `Use Points: ${this.useLoyaltyPoints}\n` +
-            `Points to Redeem: ${this.pointsToRedeem}\n` +
-            `Points Discount: ₱${this.pointsDiscount.toFixed(2)}\n` +
-            `Max Points: ${this.maxPointsToRedeem}\n\n` +
-            `Check the loyalty points section in the cart!`);
-      
-      console.log('==========================================');
-    },
     
     async sendOrderToBackend(orderData) {
       try {
         console.log('📤 Attempting to send order to backend...');
-        const response = await ordersAPI.create({
-          deliveryType: orderData.deliveryType,
-          deliveryAddress: orderData.deliveryAddress,
-          paymentMethod: orderData.paymentMethod,
-          specialInstructions: orderData.specialInstructions,
-          paymentReference: orderData.paymentReference,
-          paymentStatus: orderData.paymentStatus
+        const response = await this.createOrder({
+          user: this.userProfile,
+          items: orderData.items,
+          total_amount: orderData.total,
+          delivery_type: orderData.deliveryType,
+          delivery_address: orderData.deliveryAddress,
+          payment_method: orderData.paymentMethod,
+          special_instructions: orderData.specialInstructions,
+          payment_reference: orderData.paymentReference,
+          payment_status: orderData.paymentStatus
         });
         
         console.log('✅ Order sent to backend successfully:', response);
@@ -1608,83 +1725,6 @@ export default {
       }
     },
     
-    // Test modal visibility
-    testModal() {
-      alert('🧪 TEST MODAL BUTTON CLICKED! Check console (F12) for logs.');
-      
-      console.log('==========================================');
-      console.log('🧪 TEST MODAL CLICKED');
-      console.log('==========================================');
-      console.log('Current showOrderConfirmation:', this.showOrderConfirmation);
-      console.log('Current confirmedOrder:', this.confirmedOrder);
-      
-      try {
-        // Set the data
-        this.confirmedOrder = {
-          id: 'TEST-ORDER-123',
-          total: '99.99',
-          paymentMethod: 'test',
-          deliveryType: 'delivery',
-          paymentStatus: 'succeeded'
-        };
-        
-        console.log('✅ confirmedOrder set to:', this.confirmedOrder);
-        
-        // Try setting the flag
-        this.showOrderConfirmation = true;
-        
-        console.log('✅ showOrderConfirmation set to:', this.showOrderConfirmation);
-        
-        // Force Vue to update
-        this.$forceUpdate();
-        console.log('✅ Called $forceUpdate()');
-        
-        // Check immediately
-        console.log('Immediate check - showOrderConfirmation:', this.showOrderConfirmation);
-        
-        // Check after nextTick
-        this.$nextTick(() => {
-          console.log('After $nextTick - showOrderConfirmation:', this.showOrderConfirmation);
-          const modalElement = document.querySelector('.confirmation-modal-overlay');
-          console.log('Modal element in DOM:', modalElement);
-          
-          if (modalElement) {
-            console.log('✅ MODAL ELEMENT EXISTS!');
-            console.log('Display:', window.getComputedStyle(modalElement).display);
-            console.log('Visibility:', window.getComputedStyle(modalElement).visibility);
-            console.log('Opacity:', window.getComputedStyle(modalElement).opacity);
-            console.log('Z-index:', window.getComputedStyle(modalElement).zIndex);
-            console.log('Position:', window.getComputedStyle(modalElement).position);
-          } else {
-            console.error('❌ MODAL ELEMENT NOT IN DOM!');
-            console.error('This means v-if is not rendering it.');
-            console.error('Vue data:', {
-              showOrderConfirmation: this.showOrderConfirmation,
-              confirmedOrder: this.confirmedOrder
-            });
-          }
-        });
-        
-        // Check after a longer delay
-        setTimeout(() => {
-          console.log('After 500ms - showOrderConfirmation:', this.showOrderConfirmation);
-          const modalElement = document.querySelector('.confirmation-modal-overlay');
-          console.log('Modal element exists:', !!modalElement);
-          
-          if (!modalElement) {
-            alert('❌ MODAL STILL NOT IN DOM! The v-if condition is not working. Check console for details.');
-          } else {
-            alert('✅ Modal is in DOM! If you dont see it, its a CSS visibility issue.');
-          }
-        }, 500);
-        
-      } catch (error) {
-        console.error('❌ ERROR in testModal:', error);
-        alert('ERROR: ' + error.message);
-      }
-      
-      console.log('==========================================');
-    },
     
     // Setup payment diagnostics helper
     setupPaymentDiagnostics() {
@@ -1798,7 +1838,7 @@ export default {
       console.log('💡 Test modal: ramyeonPaymentDiagnostics.testShowModal()');
     }
   },
-  mounted() {
+  async mounted() {
     console.log('🔧 Cart component mounted');
     console.log('Full URL:', window.location.href);
     console.log('Hash:', window.location.hash);
@@ -1869,6 +1909,26 @@ export default {
     
     // Payment diagnostics helper
     this.setupPaymentDiagnostics();
+    
+    // Load active promotions regardless of login status (for per-item discounts)
+    try {
+      console.log('🎁 Loading active promotions for per-item discounts...');
+      await this.getActivePromotions();
+      console.log('✅ Active promotions loaded:', this.activePromotions.length);
+    } catch (error) {
+      console.error('❌ Error loading promotions:', error);
+    }
+    
+    // Initialize composables with user data (only if logged in)
+    if (this.userProfile) {
+      try {
+        await this.getLoyaltyBalance(this.userProfile.id);
+        await this.getLoyaltyHistory(this.userProfile.id);
+        await this.getCurrentTier(this.userProfile.id);
+      } catch (error) {
+        console.error('Error initializing loyalty composables:', error);
+      }
+    }
   },
   
   watch: {
@@ -1885,6 +1945,9 @@ export default {
           localStorage.removeItem('ramyeon_cart');
           console.log('🧹 Removed cart from localStorage');
         }
+        
+        // Recalculate cart totals using composable
+        this.calculateCartTotals();
       },
       deep: true,
       immediate: false
@@ -1987,6 +2050,83 @@ export default {
   font-weight: 600;
   color: #ff4757;
   font-size: 1.1rem;
+}
+
+.item-price-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.item-price.has-discount {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.original-price {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.current-price {
+  color: #ff4757;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.item-discount-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.discount-badge {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  width: fit-content;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.savings {
+  color: #28a745;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.total-with-discount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.original-total {
+  text-decoration: line-through;
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.discounted-total {
+  color: #ff4757;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.regular-total {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: #333;
 }
 
 .item-controls {

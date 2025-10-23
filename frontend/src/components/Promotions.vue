@@ -1,7 +1,7 @@
 <template>
   <div class="promotions-page">
     <!-- Loading State -->
-    <div v-if="loading" class="loading-container">
+    <div v-if="isLoading" class="loading-container">
       <div class="loading-spinner-big"></div>
       <p>Loading promotions...</p>
     </div>
@@ -15,7 +15,7 @@
     </div>
     
     <!-- No Promotions State -->
-    <div v-else-if="!loading && activePromotions.length === 0" class="empty-promotions">
+    <div v-else-if="!isLoading && promotions.length === 0" class="empty-promotions">
       <div class="empty-icon">🎁</div>
       <h3>No Active Promotions</h3>
       <p>Check back later for exciting deals and offers!</p>
@@ -270,13 +270,22 @@
 
 <script>
 import QRCode from 'qrcode'
-import { promotionsAPI } from '../services/apiPromotions.js'
+import { usePromotions } from '../composables/api/usePromotions.js'
 
 export default {
   name: 'Promotions',
   emits: ['setCurrentPage'],
   props: {
     isLoggedIn: Boolean
+  },
+  setup() {
+    // Initialize promotions composable
+    const promotions = usePromotions();
+    
+    return {
+      // Expose composable methods and state
+      ...promotions
+    };
   },
   data() {
     return {
@@ -286,9 +295,8 @@ export default {
       isTextCode: false,
       savingPromotions: {}, // Track which promotions are being saved
       ramyeonHero: require('@/assets/food/ramyeon-hero.jpg'),
-      activePromotions: [], // Promotions from database
-      loading: true,
-      error: null,
+      // activePromotions now comes from usePromotions composable
+      // loading and error now come from usePromotions composable
       // Fallback images for promotions
       fallbackImages: {
         'ramyeon': require('@/assets/food/ramyeon-hero.jpg'),
@@ -303,7 +311,7 @@ export default {
   computed: {
     // Split promotions into sections for display
     flashSalePromotions() {
-      return this.activePromotions.filter(p => 
+      return this.promotions.filter(p => 
         p.name?.toLowerCase().includes('flash') || 
         p.description?.toLowerCase().includes('flash')
       ).slice(0, 1) // Take first flash sale
@@ -311,7 +319,7 @@ export default {
     
     topItems() {
       // Get percentage promotions for top section
-      return this.activePromotions
+      return this.promotions
         .filter(p => p.type === 'percentage' && !this.flashSalePromotions.includes(p))
         .slice(0, 3)
         .map(p => this.formatPromotionAsItem(p))
@@ -319,7 +327,7 @@ export default {
     
     bottomItems() {
       // Get remaining promotions for bottom section
-      return this.activePromotions
+      return this.promotions
         .filter(p => !this.flashSalePromotions.includes(p) && 
                      !this.topItems.some(item => item.code === p.promotion_id))
         .slice(0, 3)
@@ -328,34 +336,25 @@ export default {
     
     specialOffers() {
       // Get fixed amount and buy_x_get_y promotions
-      return this.activePromotions
+      return this.promotions
         .filter(p => ['fixed_amount', 'buy_x_get_y'].includes(p.type))
         .slice(0, 3)
     }
   },
+  async mounted() {
+    // Initialize promotions when component is mounted
+    await this.fetchActivePromotions();
+  },
   methods: {
     async fetchActivePromotions() {
-      this.loading = true
-      this.error = null
-      
       try {
-        console.log('🎯 Fetching active promotions from database...')
-        const response = await promotionsAPI.getActive()
-        
-        if (response.success && response.promotions) {
-          this.activePromotions = response.promotions
-          console.log('✅ Loaded', response.promotions.length, 'active promotions')
-          console.log('Promotions:', response.promotions)
-        } else {
-          console.warn('⚠️ No active promotions found')
-          this.activePromotions = []
-        }
+        console.log('🎯 Fetching active promotions using composable...')
+        await this.getActivePromotions()
+        console.log('✅ Loaded', this.promotions.length, 'active promotions')
+        console.log('Promotions:', this.promotions)
       } catch (error) {
         console.error('❌ Error fetching promotions:', error)
-        this.error = error.message || 'Failed to load promotions'
         this.showErrorMessage('Could not load promotions. Please try again later.')
-      } finally {
-        this.loading = false
       }
     },
     
@@ -492,7 +491,7 @@ export default {
           // Fallback: try to fetch from API
           console.log('Promotion not found in active list, fetching from API...')
           try {
-            const response = await promotionsAPI.getById(code)
+            const response = await this.getPromotion(code)
             
             if (response.success && response.promotion) {
               fullPromotion = response.promotion
@@ -641,12 +640,6 @@ export default {
         }
       }, 3000)
     }
-  },
-  
-  mounted() {
-    console.log('📍 Promotions component mounted')
-    // Fetch active promotions from database
-    this.fetchActivePromotions()
   }
 }
 </script>

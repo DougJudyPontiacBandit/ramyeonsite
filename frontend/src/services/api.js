@@ -88,7 +88,7 @@ export const authAPI = {
   // Get current customer profile
   getProfile: async () => {
     try {
-      const response = await apiClient.get('/auth/customer/me/');
+      const response = await apiClient.get('/auth/customer/profile/');
       return response.data;
     } catch (error) {
       console.error('API Error in getProfile:', error);
@@ -234,34 +234,90 @@ export const posAPI = {
 // Uncomment and use when backend endpoints are ready
 // ============================================================================
 
-// Products API (Currently commented out in backend)
+// Products API - Connected to PANN_POS backend
 export const productsAPI = {
-  // Note: These endpoints are not active yet
-  // Uncomment in backend/api/urls.py first
-  getAll: async () => {
-    console.warn('Products API not yet implemented in backend');
-    return { results: [] };
-    // try {
-    //   const response = await apiClient.get('/products/');
-    //   return response.data;
-    // } catch (error) {
-    //   throw error.response?.data || { message: 'Failed to fetch products' };
-    // }
+  // Get all products
+  getAll: async (params = {}) => {
+    try {
+      const response = await apiClient.get('/products/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      throw error.response?.data || { message: 'Failed to fetch products' };
+    }
   },
 
-  // eslint-disable-next-line no-unused-vars
+  // Get product by ID
   getById: async (id) => {
-    console.warn('Products API not yet implemented in backend');
-    return null;
+    try {
+      const response = await apiClient.get(`/products/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch product:', error);
+      throw error.response?.data || { message: 'Failed to fetch product' };
+    }
   },
+
+  // Get products by category
+  getByCategory: async (categoryId, subcategory = null, page = 1, limit = 20) => {
+    try {
+      const params = { page, limit };
+      if (subcategory) {
+        params.subcategory = subcategory;
+      }
+      const response = await apiClient.get(`/category/${categoryId}/subcategories/${subcategory || 'all'}/products/`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch products by category:', error);
+      throw error.response?.data || { message: 'Failed to fetch products by category' };
+    }
+  },
+
+  // Search products
+  search: async (query) => {
+    try {
+      const response = await apiClient.get('/pos/search/', { params: { q: query } });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to search products:', error);
+      throw error.response?.data || { message: 'Failed to search products' };
+    }
+  }
 };
 
-// Categories API (Currently commented out in backend)
+// Categories API - Connected to PANN_POS backend
 export const categoriesAPI = {
   getAll: async () => {
-    console.warn('Categories API not yet implemented in backend');
-    return { results: [] };
+    try {
+      const response = await apiClient.get('/category/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      throw error.response?.data || { message: 'Failed to fetch categories' };
+    }
   },
+
+  // Get category by ID
+  getById: async (id) => {
+    try {
+      const response = await apiClient.get(`/category/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch category:', error);
+      throw error.response?.data || { message: 'Failed to fetch category' };
+    }
+  },
+
+  // Get subcategories
+  getSubcategories: async (categoryId) => {
+    try {
+      const response = await apiClient.get(`/category/${categoryId}/subcategories/`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch subcategories:', error);
+      throw error.response?.data || { message: 'Failed to fetch subcategories' };
+    }
+  }
 };
 
 // Cart API (Currently commented out in backend)
@@ -289,31 +345,33 @@ export const cartAPI = {
   },
 };
 
-// Orders API - Connected to /kpi/cart/checkout/ endpoint
+// Enhanced Orders API - Connected to enhanced online transaction endpoints
 export const ordersAPI = {
   // Get all orders for current user
   getAll: async () => {
     try {
-      // This would typically be a dedicated orders endpoint
-      // For now, return from localStorage as fallback
-      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-      return { results: orders };
+      const response = await apiClient.get('/online-orders/customer/me/');
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch orders:', error);
-      return { results: [] };
+      // Fallback to localStorage if API fails
+      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
+      return { results: orders };
     }
   },
 
-  // Create new order via cart checkout
+  // Create new order via enhanced online transaction API
   create: async (orderData) => {
     try {
-      const response = await apiClient.post('/cart/checkout/', {
-        delivery_type: orderData.deliveryType,
+      const response = await apiClient.post('/online-orders/', {
+        customer_id: orderData.customerId,
+        items: orderData.items,
         delivery_address: orderData.deliveryAddress,
         payment_method: orderData.paymentMethod,
         special_instructions: orderData.specialInstructions,
-        payment_reference: orderData.paymentReference, // PayMongo reference
-        payment_status: orderData.paymentStatus || 'pending',
+        payment_reference: orderData.paymentReference,
+        points_to_redeem: orderData.pointsToRedeem || 0,
+        delivery_type: orderData.deliveryType || 'delivery'
       });
       
       return response.data;
@@ -323,18 +381,42 @@ export const ordersAPI = {
     }
   },
 
-  // Get order by ID
+  // Get order by ID using enhanced API
   getById: async (id) => {
     try {
-      // This would typically be a dedicated endpoint
-      // For now, search in localStorage as fallback
-      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-      return orders.find(order => order.id === id) || null;
+      const response = await apiClient.get(`/online-orders/${id}/`);
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch order:', error);
-      return null;
+      // Fallback to localStorage
+      const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
+      return orders.find(order => order.id === id) || null;
     }
   },
+
+  // Cancel order using enhanced API
+  cancel: async (orderId, reason = 'Customer cancellation') => {
+    try {
+      const response = await apiClient.post(`/online-orders/${orderId}/cancel/`, {
+        reason: reason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+      throw error.response?.data || { message: 'Failed to cancel order' };
+    }
+  },
+
+  // Get order status
+  getStatus: async (orderId) => {
+    try {
+      const response = await apiClient.get(`/online-orders/${orderId}/`);
+      return response.data.status;
+    } catch (error) {
+      console.error('Failed to get order status:', error);
+      return 'unknown';
+    }
+  }
 };
 
 // Newsletter API (Currently commented out in backend)
@@ -353,6 +435,194 @@ export const contactAPI = {
     console.warn('Contact API not yet implemented in backend');
     return { message: 'Contact form not available' };
   },
+};
+
+// Enhanced Loyalty Points API - Connected to enhanced loyalty endpoints
+export const loyaltyAPI = {
+  // Get customer loyalty points balance (local fallback)
+  getBalance: async () => {
+    try {
+      // Since backend doesn't have this endpoint, use local fallback
+      console.log('💎 Using local loyalty balance fallback');
+      return {
+        success: true,
+        balance: 0,
+        points: 0,
+        message: 'Using local fallback - backend endpoint not available'
+      };
+    } catch (error) {
+      console.error('Error fetching loyalty balance:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch loyalty balance'
+      };
+    }
+  },
+
+  // Get customer loyalty points history (local fallback)
+  getHistory: async (limit = 50) => {
+    try {
+      // Since backend doesn't have this endpoint, use local fallback
+      console.log('📜 Using local loyalty history fallback (limit:', limit, ')');
+      return {
+        success: true,
+        history: [],
+        message: 'Using local fallback - backend endpoint not available'
+      };
+    } catch (error) {
+      console.error('Error fetching loyalty history:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch loyalty history'
+      };
+    }
+  },
+
+  // Validate points redemption
+  validateRedemption: async (pointsToRedeem, subtotal, customerId) => {
+    try {
+      const response = await apiClient.post('/online-orders/validate-points/', {
+        customer_id: customerId,
+        points_to_redeem: pointsToRedeem,
+        subtotal: subtotal
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error validating points redemption:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to validate points redemption'
+      };
+    }
+  },
+
+  // Calculate loyalty points earned
+  calculatePointsEarned: async (subtotalAfterDiscount) => {
+    try {
+      const response = await apiClient.post('/online-orders/calculate-points/', {
+        subtotal_after_discount: subtotalAfterDiscount
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error calculating loyalty points:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to calculate loyalty points'
+      };
+    }
+  },
+
+  // Get current loyalty tier (local fallback)
+  getCurrentTier: async (customerId) => {
+    try {
+      // Since backend doesn't have this endpoint, use local fallback
+      console.log('👑 Using local loyalty tier fallback for customer:', customerId);
+      return {
+        success: true,
+        tier: {
+          name: 'Bronze',
+          level: 1,
+          min_points: 0,
+          max_points: 999,
+          benefits: ['Basic rewards']
+        },
+        message: 'Using local fallback - backend endpoint not available'
+      };
+    } catch (error) {
+      console.error('Error fetching current tier:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch current tier'
+      };
+    }
+  }
+};
+
+// Enhanced Stock Validation API - Connected to enhanced stock endpoints
+export const stockAPI = {
+  // Validate stock availability for order items
+  validateStock: async (items) => {
+    try {
+      const response = await apiClient.post('/online-orders/validate-stock/', {
+        items: items
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error validating stock:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to validate stock'
+      };
+    }
+  },
+
+  // Check individual product stock
+  checkProductStock: async (productId, quantity) => {
+    try {
+      const response = await apiClient.post('/online-orders/validate-stock/', {
+        items: [{ product_id: productId, quantity: quantity }]
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error checking product stock:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to check product stock'
+      };
+    }
+  }
+};
+
+// Enhanced Promotions API - Connected to enhanced promotion endpoints
+export const promotionsAPI = {
+  // Get active promotions
+  getActive: async () => {
+    try {
+      const response = await apiClient.get('/promotions/active/');
+      // Backend returns {success: true, promotions: [...]}
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching active promotions:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to fetch promotions'
+      };
+    }
+  },
+
+  // Apply promotion to cart
+  applyPromotion: async (promotionCode, cartItems) => {
+    try {
+      const response = await apiClient.post('/promotions/apply/', {
+        promotion_code: promotionCode,
+        cart_items: cartItems
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error applying promotion:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to apply promotion'
+      };
+    }
+  },
+
+  // Validate promotion eligibility
+  validatePromotion: async (promotionCode, cartItems) => {
+    try {
+      const response = await apiClient.post('/promotions/validate/', {
+        promotion_code: promotionCode,
+        cart_items: cartItems
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error validating promotion:', error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to validate promotion'
+      };
+    }
+  }
 };
 
 export default apiClient;
