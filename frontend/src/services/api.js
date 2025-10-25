@@ -2,12 +2,54 @@
 import axios from 'axios';
 
 // Base URL for API - prefer real .env keys used in project
+// Allow runtime overrides for development without rebuilding:
+// - URL param: ?api=https://pann-pos.onrender.com/api/v1
+// - localStorage key: ramyeon_api_base_url
+// - global: window.__RAMYEON_API__
+const RUNTIME_API_OVERRIDE = (() => {
+  try {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('api');
+      if (p) return p;
+      const stored = localStorage.getItem('ramyeon_api_base_url');
+      if (stored) return stored;
+      // eslint-disable-next-line no-underscore-dangle
+      if (window.__RAMYEON_API__) return window.__RAMYEON_API__;
+    }
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[API] Runtime override parse error:', e);
+  }
+  return null;
+})();
+
 const API_BASE_URL =
+  RUNTIME_API_OVERRIDE ||
+  // Vite (import.meta.env)
   (typeof import.meta !== 'undefined' && import.meta.env && (
     import.meta.env.VITE_API_URL ||
     import.meta.env.VITE_API_BASE_URL ||
     import.meta.env.VUE_APP_API_URL
-  )) || 'http://localhost:8000/api/v1';
+  ))
+  // Vue CLI (process.env)
+  || (typeof process !== 'undefined' && process.env && (
+    process.env.VUE_APP_API_URL ||
+    process.env.VITE_API_URL
+  ))
+  // Local fallback
+  || 'http://localhost:8000/api/v1';
+
+// Debug log the resolved API base URL once (helps diagnose env issues)
+try {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line no-console
+    console.log('[API] Resolved base URL:', API_BASE_URL);
+    if (RUNTIME_API_OVERRIDE) console.log('[API] Using runtime override');
+  }
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.warn('[API] Failed to log base URL:', e);
+}
 
 // Create axios instance with default config
 const apiClient = axios.create({

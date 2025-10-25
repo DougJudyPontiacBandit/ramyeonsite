@@ -367,6 +367,12 @@ import { useProducts } from '../composables/api/useProducts.js';
 import { usePromotions } from '../composables/api/usePromotions.js';
 import { useLoyalty } from '../composables/api/useLoyalty.js';
 
+// Toggle verbose cart logging via env: VITE_DEBUG_CART=true or VUE_APP_DEBUG_CART=true
+const CART_DEBUG = (
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_DEBUG_CART === 'true') ||
+  (typeof process !== 'undefined' && process.env && process.env.VUE_APP_DEBUG_CART === 'true')
+);
+
 export default {
   name: 'Cart',
   emits: ['setCurrentPage'],
@@ -518,7 +524,7 @@ export default {
             this.pointsToRedeem = this.maxPointsToRedeem;
           }
           
-          console.log('⭐ Points calculation:', {
+          if (CART_DEBUG) console.log('⭐ Points calculation:', {
             pointsToRedeem: this.pointsToRedeem,
             pointsDiscount: this.pointsDiscount,
             maxPointsToRedeem: this.maxPointsToRedeem,
@@ -541,7 +547,7 @@ export default {
       this.promoError = null;
       
       try {
-        console.log('🎁 Applying promo code:', this.promoCode);
+        if (CART_DEBUG) console.log('🎁 Applying promo code:', this.promoCode);
         
         // Use composable to apply promotion
         const result = await this.applyPromotionToCart(this.promoCode.trim());
@@ -550,7 +556,7 @@ export default {
           this.appliedPromotion = result.data.promotion;
           this.promotionDiscount = result.data.discount_amount;
           this.promoError = null;
-          console.log('✅ Promotion applied! Discount:', this.promotionDiscount);
+          if (CART_DEBUG) console.log('✅ Promotion applied! Discount:', this.promotionDiscount);
           
           // Show success message
           this.showSuccessNotification(`Promo code applied! You saved ₱${this.promotionDiscount.toFixed(2)}`);
@@ -568,7 +574,7 @@ export default {
     
     
     async removePromoCode() {
-      console.log('🗑️ Removing promo code');
+      if (CART_DEBUG) console.log('🗑️ Removing promo code');
       
       // Use composable to remove promotion
       if (this.appliedPromotion) {
@@ -662,15 +668,15 @@ export default {
     
     // Per-item discount calculation methods
     getItemDiscount(item) {
-      console.log('🔍 Checking discount for item:', item.name, 'Price:', item.price);
-      console.log('🎁 Available promotions:', this.activePromotions.length);
+      if (CART_DEBUG) console.log('🔍 Checking discount for item:', item.name, 'Price:', item.price);
+      if (CART_DEBUG) console.log('🎁 Available promotions:', this.activePromotions.length);
       
       // Check if item is eligible for any active promotion
       const applicablePromotion = this.getApplicablePromotionForItem(item);
-      console.log('✅ Applicable promotion for', item.name, ':', applicablePromotion);
+      if (CART_DEBUG) console.log('✅ Applicable promotion for', item.name, ':', applicablePromotion);
       
       if (!applicablePromotion) {
-        console.log('❌ No applicable promotion for', item.name);
+        if (CART_DEBUG) console.log('❌ No applicable promotion for', item.name);
         return 0;
       }
       
@@ -679,14 +685,14 @@ export default {
       
       if (applicablePromotion.type === 'percentage') {
         discountAmount = originalPrice * (applicablePromotion.discount_value / 100);
-        console.log('📊 Percentage discount:', applicablePromotion.discount_value + '%', 'Amount:', discountAmount);
+        if (CART_DEBUG) console.log('📊 Percentage discount:', applicablePromotion.discount_value + '%', 'Amount:', discountAmount);
       } else if (applicablePromotion.type === 'fixed_amount') {
         discountAmount = Math.min(applicablePromotion.discount_value, originalPrice);
-        console.log('💰 Fixed amount discount:', applicablePromotion.discount_value, 'Amount:', discountAmount);
+        if (CART_DEBUG) console.log('💰 Fixed amount discount:', applicablePromotion.discount_value, 'Amount:', discountAmount);
       }
       
       const finalDiscount = Math.max(0, discountAmount);
-      console.log('🎯 Final discount for', item.name, ':', finalDiscount);
+      if (CART_DEBUG) console.log('🎯 Final discount for', item.name, ':', finalDiscount);
       return finalDiscount;
     },
     
@@ -710,30 +716,30 @@ export default {
     },
     
     getApplicablePromotionForItem(item) {
-      console.log('🔍 Checking promotions for item:', item.name);
-      console.log('📋 Active promotions count:', this.activePromotions.length);
+      if (CART_DEBUG) console.log('🔍 Checking promotions for item:', item.name);
+      if (CART_DEBUG) console.log('📋 Active promotions count:', this.activePromotions.length);
       
       // Check if any active promotion applies to this item
       for (const promotion of this.activePromotions) {
-        console.log('🎁 Checking promotion:', promotion.name, 'Type:', promotion.type, 'Status:', promotion.status);
+        if (CART_DEBUG) console.log('🎁 Checking promotion:', promotion.name, 'Type:', promotion.type, 'Status:', promotion.status);
         const isEligible = this.isItemEligibleForPromotion(item, promotion);
-        console.log('✅ Is eligible for', promotion.name, ':', isEligible);
+        if (CART_DEBUG) console.log('✅ Is eligible for', promotion.name, ':', isEligible);
         
         if (isEligible) {
-          console.log('🎯 Found applicable promotion:', promotion.name);
+          if (CART_DEBUG) console.log('🎯 Found applicable promotion:', promotion.name);
           return promotion;
         }
       }
-      console.log('❌ No applicable promotion found for', item.name);
+      if (CART_DEBUG) console.log('❌ No applicable promotion found for', item.name);
       return null;
     },
     
     isItemEligibleForPromotion(item, promotion) {
-      console.log('🔍 Checking eligibility for', item.name, 'with promotion', promotion.name);
+      if (CART_DEBUG) console.log('🔍 Checking eligibility for', item.name, 'with promotion', promotion.name);
       
       // Check if promotion is active
       if (promotion.status !== 'active') {
-        console.log('❌ Promotion not active:', promotion.status);
+        if (CART_DEBUG) console.log('❌ Promotion not active:', promotion.status);
         return false;
       }
       
@@ -742,35 +748,35 @@ export default {
       const startDate = new Date(promotion.start_date);
       const endDate = new Date(promotion.end_date);
       
-      console.log('📅 Date check - Now:', now, 'Start:', startDate, 'End:', endDate);
+      if (CART_DEBUG) console.log('📅 Date check - Now:', now, 'Start:', startDate, 'End:', endDate);
       
       if (now < startDate || now > endDate) {
-        console.log('❌ Promotion outside date range');
+        if (CART_DEBUG) console.log('❌ Promotion outside date range');
         return false;
       }
       
       // Check target type and IDs
-      console.log('🎯 Target type:', promotion.target_type, 'Target IDs:', promotion.target_ids);
+      if (CART_DEBUG) console.log('🎯 Target type:', promotion.target_type, 'Target IDs:', promotion.target_ids);
       
       const targetType = (promotion.target_type || '').toLowerCase();
       if (targetType === 'all') {
-        console.log('✅ Promotion applies to all items');
+        if (CART_DEBUG) console.log('✅ Promotion applies to all items');
         return true;
       } else if (targetType === 'category' || targetType === 'categories') {
         // Check if item belongs to target category
         const isCategoryMatch = promotion.target_ids && promotion.target_ids.includes(item.category_id);
-        console.log('📂 Category check - Item category:', item.category_id, 'Target IDs:', promotion.target_ids, 'Match:', isCategoryMatch);
+        if (CART_DEBUG) console.log('📂 Category check - Item category:', item.category_id, 'Target IDs:', promotion.target_ids, 'Match:', isCategoryMatch);
         
         // If category match failed, try drinks keyword matching for drinks promotions
         if (!isCategoryMatch && promotion.name && promotion.name.toLowerCase().includes('drinks')) {
-          console.log('🔍 Category match failed, trying drinks keyword matching...');
+          if (CART_DEBUG) console.log('🔍 Category match failed, trying drinks keyword matching...');
           const itemName = item.name.toLowerCase();
           const itemDescription = (item.description || '').toLowerCase();
           const drinksKeywords = ['drink', 'beverage', 'juice', 'soda', 'water', 'tea', 'coffee', 'milk', '7 up', 'coke', 'pepsi', 'alaska'];
           const isDrinksMatch = drinksKeywords.some(keyword => 
             itemName.includes(keyword) || itemDescription.includes(keyword)
           );
-          console.log('🥤 Drinks keyword check - Keywords:', drinksKeywords, 'Item name:', itemName, 'Match:', isDrinksMatch);
+          if (CART_DEBUG) console.log('🥤 Drinks keyword check - Keywords:', drinksKeywords, 'Item name:', itemName, 'Match:', isDrinksMatch);
           return isDrinksMatch;
         }
         
@@ -778,14 +784,14 @@ export default {
       } else if (targetType === 'product' || targetType === 'products') {
         // Check if item is in target products
         const isProductMatch = promotion.target_ids && promotion.target_ids.includes(item.product_id || item.id);
-        console.log('🛍️ Product check - Item ID:', item.product_id || item.id, 'Match:', isProductMatch);
+        if (CART_DEBUG) console.log('🛍️ Product check - Item ID:', item.product_id || item.id, 'Match:', isProductMatch);
         return isProductMatch;
       } else if (promotion.target_type === 'specific') {
         // Check specific criteria (e.g., drinks, ramyeon, etc.)
         const itemName = item.name.toLowerCase();
         const itemDescription = (item.description || '').toLowerCase();
         
-        console.log('🔍 Specific check - Item name:', itemName, 'Description:', itemDescription);
+        if (CART_DEBUG) console.log('🔍 Specific check - Item name:', itemName, 'Description:', itemDescription);
         
         // Check for drinks promotion
         if (promotion.name && promotion.name.toLowerCase().includes('drinks')) {
@@ -793,7 +799,7 @@ export default {
           const isDrinksMatch = drinksKeywords.some(keyword => 
             itemName.includes(keyword) || itemDescription.includes(keyword)
           );
-          console.log('🥤 Drinks check - Keywords:', drinksKeywords, 'Match:', isDrinksMatch);
+          if (CART_DEBUG) console.log('🥤 Drinks check - Keywords:', drinksKeywords, 'Match:', isDrinksMatch);
           return isDrinksMatch;
         }
         
@@ -803,12 +809,12 @@ export default {
           const isRamyeonMatch = ramyeonKeywords.some(keyword => 
             itemName.includes(keyword) || itemDescription.includes(keyword)
           );
-          console.log('🍜 Ramyeon check - Keywords:', ramyeonKeywords, 'Match:', isRamyeonMatch);
+          if (CART_DEBUG) console.log('🍜 Ramyeon check - Keywords:', ramyeonKeywords, 'Match:', isRamyeonMatch);
           return isRamyeonMatch;
         }
       }
       
-      console.log('❌ No matching criteria found');
+      if (CART_DEBUG) console.log('❌ No matching criteria found');
       return false;
     },
     
@@ -1374,13 +1380,10 @@ export default {
     },
     
     checkPaymentReturn() {
-      console.log('==========================================');
-      console.log('🔍 CHECKING PAYMENT RETURN');
-      console.log('==========================================');
-      
-      console.log('Full URL:', window.location.href);
-      console.log('Hash:', window.location.hash);
-      console.log('Search:', window.location.search);
+      if (CART_DEBUG) {
+        console.log('[Cart] Checking payment return');
+        console.log('[Cart] URL:', window.location.href);
+      }
       
       // For hash routing, parameters come after the hash
       // URL format: #/cart?payment=success&order=ORDER-xxx
@@ -1394,7 +1397,7 @@ export default {
           const urlParams = new URLSearchParams(hashParts[1]);
           paymentStatus = urlParams.get('payment');
           orderId = urlParams.get('order');
-          console.log('📍 Parsed from hash');
+          if (CART_DEBUG) console.log('[Cart] Parsed payment params from hash');
         }
       }
       
@@ -1403,45 +1406,41 @@ export default {
         const urlParams = new URLSearchParams(window.location.search);
         paymentStatus = urlParams.get('payment');
         orderId = urlParams.get('order');
-        console.log('📍 Parsed from search params');
+        if (CART_DEBUG) console.log('[Cart] Parsed payment params from search');
       }
       
-      console.log('Payment Status from URL:', paymentStatus);
-      console.log('Order ID from URL:', orderId);
+      if (CART_DEBUG) console.log('[Cart] Payment return params:', { paymentStatus, orderId });
       
       if (paymentStatus && orderId) {
-        console.log('✅ Payment return detected!');
+        if (CART_DEBUG) console.log('[Cart] Payment return detected');
         
         // Get pending order
         const pendingOrderStr = localStorage.getItem('ramyeon_pending_order');
-        
-        console.log('Pending order string:', pendingOrderStr);
-        console.log('Pending order exists:', !!pendingOrderStr);
+        if (CART_DEBUG) console.log('[Cart] Pending order exists:', !!pendingOrderStr);
         
         if (pendingOrderStr) {
-          console.log('✅ Pending order found in localStorage');
+          if (CART_DEBUG) console.log('[Cart] Pending order found in localStorage');
           
           try {
             const orderData = JSON.parse(pendingOrderStr);
-            console.log('📋 Parsed order data:', orderData);
+            if (CART_DEBUG) console.log('[Cart] Parsed order data (ids only):', { id: orderData?.id, total: orderData?.total });
             
             if (paymentStatus === 'success') {
               // Payment successful
-              console.log('✅✅✅ Payment successful! Processing order...');
-              console.log('Setting payment status to succeeded');
+              if (CART_DEBUG) console.log('[Cart] Payment successful');
               
               orderData.paymentStatus = 'succeeded';
               orderData.status = 'confirmed';
               
-              console.log('Updated order data:', orderData);
+              if (CART_DEBUG) console.log('[Cart] Order marked confirmed');
               
               // Track successful payment
               this.trackPaymentAttempt(orderId, 'succeeded', orderData.paymentMethod);
               
               // Load user profile first
-              console.log('Loading user profile...');
+              if (CART_DEBUG) console.log('[Cart] Loading user profile...');
               this.loadUserProfile().then(async () => {
-                console.log('User profile loaded:', this.userProfile);
+                if (CART_DEBUG) console.log('[Cart] User profile loaded');
                 
                 // Award points for successful payment (20% of subtotal after discount)
                 if (this.userProfile && this.userProfile.id !== 'guest') {
@@ -1450,17 +1449,17 @@ export default {
                   
                   if (pointsEarned > 0) {
                     try {
-                      console.log('⭐ Awarding loyalty points for payment return:', pointsEarned);
+                      if (CART_DEBUG) console.log('[Cart] Awarding loyalty points:', pointsEarned);
                       const awardResult = await this.awardPoints(pointsEarned, this.userProfile.id, {
                         order_id: orderId,
                         description: `Points earned from order #${orderId} (payment return)`
                       });
-                      console.log('✅ Points awarded on payment return:', awardResult);
+                      if (CART_DEBUG) console.log('[Cart] Points awarded');
                       
                       // Update user profile with new points
                       if (awardResult.success && awardResult.data) {
                         this.userProfile.loyalty_points = this.loyaltyBalance;
-                        console.log('👤 Updated user points after payment:', this.userProfile.loyalty_points);
+                        if (CART_DEBUG) console.log('[Cart] Updated user points after payment');
                         
                         // Force UI update to show new points
                         this.$forceUpdate();
@@ -1475,39 +1474,34 @@ export default {
                 const userId = this.userProfile?.id || this.userProfile?.email || 'guest';
                 const userOrdersKey = `ramyeon_orders_${userId}`;
                 
-                console.log('Saving to user key:', userOrdersKey);
+                if (CART_DEBUG) console.log('[Cart] Saving order to user key');
                 
                 const orders = JSON.parse(localStorage.getItem(userOrdersKey) || '[]');
-                console.log('Existing orders:', orders.length);
                 
                 orders.push(orderData);
                 localStorage.setItem(userOrdersKey, JSON.stringify(orders));
-                console.log('✅ Saved to user-specific orders');
+                if (CART_DEBUG) console.log('[Cart] Saved to user orders');
                 
                 // Also save to global orders
                 const allOrders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
                 allOrders.push(orderData);
                 localStorage.setItem('ramyeon_orders', JSON.stringify(allOrders));
-                console.log('✅ Saved to global orders');
-                
-                console.log('💾 Order saved to localStorage for user:', userId);
+                if (CART_DEBUG) console.log('[Cart] Saved to global orders');
                 
                 // Send to backend only if it wasn't already created pre-redirect
                 if (!orderData.backendOrderId) {
                   this.sendOrderToBackend(orderData);
                 } else {
-                  console.log('Skipping backend send - backendOrderId exists:', orderData.backendOrderId);
+                  if (CART_DEBUG) console.log('[Cart] Skipping backend send - backendOrderId exists');
                 }
                 
                 // Clear pending order
                 localStorage.removeItem('ramyeon_pending_order');
-                console.log('✅ Cleared pending order');
+                if (CART_DEBUG) console.log('[Cart] Cleared pending order');
                 
                 // Clear cart completely
-                console.log('🧹 Clearing cart after payment return - before:', this.cartItems.length);
                 this.cartItems = [];
                 localStorage.removeItem('ramyeon_cart');
-                console.log('🧹 Cart cleared - after:', this.cartItems.length);
                 this.$forceUpdate();
                 
                 // Calculate points earned for display
@@ -1516,9 +1510,9 @@ export default {
                 
                 // Refresh user profile to show updated points
                 try {
-                  console.log('🔄 Refreshing user profile after payment return...');
+                  if (CART_DEBUG) console.log('[Cart] Refreshing user profile after payment return...');
                   await this.loadUserProfile();
-                  console.log('✅ User profile refreshed with points:', this.userProfile.loyalty_points);
+                  if (CART_DEBUG) console.log('[Cart] User profile refreshed');
                 } catch (error) {
                   console.error('❌ Error refreshing user profile after payment:', error);
                 }
@@ -1534,9 +1528,7 @@ export default {
                   pointsUsed: orderData.pointsDiscount || 0
                 };
                 
-                console.log('🎉🎉🎉 Showing confirmation modal for returned payment');
-                console.log('Confirmed order:', this.confirmedOrder);
-                console.log('Before setting - showOrderConfirmation:', this.showOrderConfirmation);
+                if (CART_DEBUG) console.log('[Cart] Showing confirmation modal for returned payment');
                 
                 // Force update and show modal
                 this.$forceUpdate();
@@ -1544,19 +1536,13 @@ export default {
                 // Use nextTick to ensure DOM is updated
                 this.$nextTick(() => {
                   this.showOrderConfirmation = true;
-                  console.log('After setting - showOrderConfirmation:', this.showOrderConfirmation);
                   
                   // Check after a delay
                   setTimeout(() => {
-                    console.log('After 500ms - showOrderConfirmation:', this.showOrderConfirmation);
                     const modalElement = document.querySelector('.confirmation-modal-overlay');
-                    console.log('Modal element exists:', !!modalElement);
                     
                     if (modalElement) {
-                      console.log('✅✅✅ MODAL IS IN DOM!');
-                      console.log('Display:', window.getComputedStyle(modalElement).display);
-                      console.log('Visibility:', window.getComputedStyle(modalElement).visibility);
-                      console.log('Z-index:', window.getComputedStyle(modalElement).zIndex);
+                      if (CART_DEBUG) console.log('[Cart] Confirmation modal visible');
                     } else {
                       console.error('❌❌❌ MODAL NOT IN DOM!');
                       alert('Modal should show but its not in DOM. State: ' + this.showOrderConfirmation);
@@ -1566,7 +1552,7 @@ export default {
                 
                 // DON'T clean URL immediately - wait for user to close modal
                 // The modal close button will handle navigation
-                console.log('✅ Keeping URL with params until modal is closed');
+                if (CART_DEBUG) console.log('[Cart] Keeping URL with params until modal close');
               }).catch(err => {
                 console.error('Error loading user profile:', err);
                 // Continue anyway with guest user
@@ -1574,7 +1560,7 @@ export default {
               });
             } else {
               // Payment failed or cancelled
-              console.log('❌ Payment failed/cancelled');
+              if (CART_DEBUG) console.log('[Cart] Payment failed/cancelled');
               // Track failed/cancelled payment
               this.trackPaymentAttempt(orderId, 'cancelled', orderData.paymentMethod, 'User cancelled payment');
               
@@ -1584,10 +1570,10 @@ export default {
               this.cartItems = orderData.items;
               localStorage.setItem('ramyeon_cart', JSON.stringify(orderData.items));
               localStorage.removeItem('ramyeon_pending_order');
-              console.log('🔄 Cart restored');
+              if (CART_DEBUG) console.log('[Cart] Cart restored after failed/cancelled payment');
               
               // Don't clean URL here - payment will still try to process
-              console.log('⚠️ Payment failed/cancelled - leaving URL as is');
+              if (CART_DEBUG) console.log('[Cart] Leaving URL as is');
             }
           } catch (error) {
             console.error('❌❌❌ ERROR processing payment return:', error);
@@ -1596,17 +1582,13 @@ export default {
             alert('There was an error processing your payment return. Please contact support if your payment was successful.');
           }
         } else {
-          console.log('⚠️⚠️⚠️ No pending order found for payment return!');
-          console.log('This means the order wasnt stored before redirect');
+          if (CART_DEBUG) console.log('[Cart] No pending order found for payment return');
           alert('No pending order found! The order may not have been stored before payment redirect.');
         }
       } else {
-        console.log('ℹ️ No payment return detected (no payment/order parameters in URL)');
+        if (CART_DEBUG) console.log('[Cart] No payment return detected');
       }
       
-      console.log('==========================================');
-      console.log('END PAYMENT RETURN CHECK');
-      console.log('==========================================');
     },
     
     
@@ -1944,12 +1926,11 @@ export default {
         this.checkPaymentReturn();
       }, 100);
     } else {
-      console.log('ℹ️ No payment params in URL, skipping payment return check');
+      if (CART_DEBUG) console.log('[Cart] No payment params in URL, skipping payment return check');
       // Clear any stale pending orders if no payment params
       const stalePendingOrder = localStorage.getItem('ramyeon_pending_order');
       if (stalePendingOrder) {
-        console.log('⚠️ Found stale pending order (timestamp:', new Date(JSON.parse(stalePendingOrder).orderTime).toLocaleString(), ')');
-        console.log('🧹 Clearing stale pending order');
+        if (CART_DEBUG) console.log('[Cart] Clearing stale pending order');
         localStorage.removeItem('ramyeon_pending_order');
       }
     }
@@ -1959,17 +1940,17 @@ export default {
     
     // Load cart items from localStorage if available
     const savedCart = localStorage.getItem('ramyeon_cart');
-    console.log('📦 Loading cart from localStorage:', savedCart ? 'Found' : 'Empty');
+    if (CART_DEBUG) console.log('[Cart] Loading cart from localStorage:', savedCart ? 'Found' : 'Empty');
     
     if (savedCart) {
       try {
         const parsedCart = JSON.parse(savedCart);
-        console.log('📋 Parsed cart:', parsedCart.length, 'items');
+        if (CART_DEBUG) console.log('[Cart] Parsed cart items:', parsedCart.length);
         
         // Only load if it's a valid array
         if (Array.isArray(parsedCart)) {
           this.cartItems = parsedCart;
-          console.log('✅ Cart loaded:', this.cartItems.length, 'items');
+          if (CART_DEBUG) console.log('[Cart] Cart loaded:', this.cartItems.length, 'items');
         } else {
           // If invalid, clear it
           console.warn('⚠️ Invalid cart data, clearing');
