@@ -248,6 +248,10 @@ export function usePromotions() {
    */
   const applyPromotion = async (promotion, cartItems = [], context = {}) => {
     try {
+      if (!promotion) {
+        console.warn('applyPromotion called with undefined promotion');
+        return { success: false, error: 'Promotion not found' };
+      }
       console.log('🎯 Applying promotion:', promotion.name)
       
       // Validate promotion first

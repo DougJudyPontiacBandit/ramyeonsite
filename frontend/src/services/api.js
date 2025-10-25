@@ -1,8 +1,13 @@
 // API Service for Backend Communication
 import axios from 'axios';
 
-// Base URL for API - adjusted to match the unified PANN_POS backend
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// Base URL for API - prefer real .env keys used in project
+const API_BASE_URL =
+  (typeof import.meta !== 'undefined' && import.meta.env && (
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VUE_APP_API_URL
+  )) || 'http://localhost:8000/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -18,6 +23,9 @@ apiClient.interceptors.request.use(
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_SERVICE_TOKEN) {
+      // Fallback service token for public pages hitting protected endpoints
+      config.headers.Authorization = `Bearer ${import.meta.env.VITE_API_SERVICE_TOKEN}`;
     }
     return config;
   },
@@ -28,49 +36,29 @@ apiClient.interceptors.request.use(
 
 // Auth API - Connected to /api/auth/customer/* endpoints
 export const authAPI = {
-  // Register new customer
-  register: async (userData) => {
-    try {
-      const response = await apiClient.post('/auth/customer/register/', {
-        email: userData.email,
-        password: userData.password,
-        username: userData.username || userData.email.split('@')[0],
-        full_name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-        phone: userData.phone || '',
-        delivery_address: userData.delivery_address || {}
-      });
-      
-      // Save token (backend returns 'token' not 'access_token')
-      if (response.data.token) {
-        localStorage.setItem('access_token', response.data.token);
-      }
-      
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Registration failed' };
-    }
+  // Registration is not supported by current PANN_POS API
+  register: async () => {
+    throw { message: 'Registration is not supported by the current PANN_POS API' };
   },
 
-  // Login customer
+  // Login (customer login via PANN_POS customer service)
   login: async (email, password) => {
     try {
-      const response = await apiClient.post('/auth/customer/login/', {
-        email,
-        password,
-      });
-      
-      // Save token
-      if (response.data.token) {
-        localStorage.setItem('access_token', response.data.token);
+      const response = await apiClient.post('/auth/customer/login/', { email, password });
+      const { access_token, refresh_token } = response.data || {};
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
       }
-      
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
+      }
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Login failed' };
     }
   },
 
-  // Logout customer
+  // Logout
   logout: async () => {
     try {
       // Clear local storage
@@ -85,10 +73,10 @@ export const authAPI = {
     }
   },
 
-  // Get current customer profile
+  // Get current authenticated customer
   getProfile: async () => {
     try {
-      const response = await apiClient.get('/auth/customer/profile/');
+      const response = await apiClient.get('/auth/customer/me/');
       return response.data;
     } catch (error) {
       console.error('API Error in getProfile:', error);
@@ -104,129 +92,22 @@ export const authAPI = {
     }
   },
 
-  // Change customer password
-  changePassword: async (oldPassword, newPassword) => {
-    try {
-      const response = await apiClient.post('/auth/customer/password/change/', {
-        old_password: oldPassword,
-        new_password: newPassword,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to change password' };
-    }
-  },
-
-  // Update customer profile
-  updateProfile: async (profileData) => {
-    try {
-      const response = await apiClient.put('/auth/customer/profile/update/', profileData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to update profile' };
-    }
-  },
+  // Password/profile updates are not supported by current PANN_POS API
+  changePassword: async () => { throw { message: 'Password change is not supported by the current PANN_POS API' }; },
+  updateProfile: async () => { throw { message: 'Profile update is not supported by the current PANN_POS API' }; },
 };
 
 // POS API - Connected to /api/pos/* endpoints (for cashier operations)
 export const posAPI = {
-  // Scan user QR code
-  scanUserQR: async (qrCode) => {
-    try {
-      const response = await apiClient.post('/pos/scan-user/', {
-        qr_code: qrCode,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to scan user QR code' };
-    }
-  },
-
-  // Scan promotion QR code
-  scanPromotionQR: async (qrCode) => {
-    try {
-      const response = await apiClient.post('/pos/scan-promotion/', {
-        qr_code: qrCode,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to scan promotion QR code' };
-    }
-  },
-
-  // Redeem promotion
-  redeemPromotion: async (userQrCode, promotionQrCode, cashierName, orderId = null) => {
-    try {
-      const response = await apiClient.post('/pos/redeem-promotion/', {
-        user_qr_code: userQrCode,
-        promotion_qr_code: promotionQrCode,
-        cashier_name: cashierName,
-        order_id: orderId,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to redeem promotion' };
-    }
-  },
-
-  // Award points manually
-  awardPoints: async (userQrCode, points, description, cashierName) => {
-    try {
-      const response = await apiClient.post('/pos/award-points/', {
-        user_qr_code: userQrCode,
-        points: points,
-        description: description,
-        cashier_name: cashierName,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to award points' };
-    }
-  },
-
-  // Process order points
-  processOrderPoints: async (userQrCode, orderTotal, orderId = null) => {
-    try {
-      const response = await apiClient.post('/pos/process-order-points/', {
-        user_qr_code: userQrCode,
-        order_total: orderTotal,
-        order_id: orderId,
-      });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to process order points' };
-    }
-  },
-
-  // Get user by QR code
-  getUserByQR: async (qrCode) => {
-    try {
-      const response = await apiClient.get(`/pos/user/${qrCode}/`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to get user' };
-    }
-  },
-
-  // Get promotion by QR code
-  getPromotionByQR: async (qrCode) => {
-    try {
-      const response = await apiClient.get(`/pos/promotion/${qrCode}/`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to get promotion' };
-    }
-  },
-
-  // Get POS dashboard stats
-  getDashboard: async () => {
-    try {
-      const response = await apiClient.get('/pos/dashboard/');
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch dashboard' };
-    }
-  },
+  // POS QR and cashier-specific endpoints are not available in PANN_POS for the website
+  scanUserQR: async () => { throw { message: 'POS QR scan is not supported by the current PANN_POS API' }; },
+  scanPromotionQR: async () => { throw { message: 'POS promotion scan is not supported by the current PANN_POS API' }; },
+  redeemPromotion: async () => { throw { message: 'POS promotion redemption is not supported by the current PANN_POS API' }; },
+  awardPoints: async () => { throw { message: 'Manual points award is not supported by the current PANN_POS API' }; },
+  processOrderPoints: async () => { throw { message: 'Order points processing is not supported by the current PANN_POS API' }; },
+  getUserByQR: async () => { throw { message: 'POS user lookup by QR is not supported by the current PANN_POS API' }; },
+  getPromotionByQR: async () => { throw { message: 'POS promotion lookup by QR is not supported by the current PANN_POS API' }; },
+  getDashboard: async () => { throw { message: 'POS dashboard is not supported by the current PANN_POS API' }; },
 };
 
 // ============================================================================
@@ -350,11 +231,10 @@ export const ordersAPI = {
   // Get all orders for current user
   getAll: async () => {
     try {
-      const response = await apiClient.get('/online-orders/customer/me/');
+      // Use backend recent sales if available
+      const response = await apiClient.get('/sales/recent/');
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch orders:', error);
-      // Fallback to localStorage if API fails
       const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
       return { results: orders };
     }
@@ -363,57 +243,56 @@ export const ordersAPI = {
   // Create new order via enhanced online transaction API
   create: async (orderData) => {
     try {
-      const response = await apiClient.post('/online-orders/', {
-        customer_id: orderData.customerId,
-        items: orderData.items,
-        delivery_address: orderData.deliveryAddress,
-        payment_method: orderData.paymentMethod,
-        special_instructions: orderData.specialInstructions,
-        payment_reference: orderData.paymentReference,
-        points_to_redeem: orderData.pointsToRedeem || 0,
-        delivery_type: orderData.deliveryType || 'delivery'
-      });
-      
+      const items = Array.isArray(orderData?.items) ? orderData.items : [];
+      const payload = {
+        customer_id: orderData?.user?.id,
+        items: items.map((item) => ({
+          product_id: item.product_id || item.id || item.productId,
+          quantity: item.quantity || 1,
+          price: item.price || item.unit_price || 0,
+          product_name: item.name || item.product_name,
+        })),
+        delivery_address: orderData?.delivery_address || {},
+        delivery_type: orderData?.delivery_type || 'delivery',
+        payment_method: (orderData?.payment_method || 'cod').toLowerCase(),
+        points_to_redeem: (orderData?.loyalty_points ?? orderData?.pointsToRedeem) || 0,
+        notes: orderData?.special_instructions || '',
+      };
+      console.log('ordersAPI.create payload:', payload);
+      const response = await apiClient.post('/online/orders/create/', payload);
       return response.data;
     } catch (error) {
-      console.error('Order creation error:', error);
-      throw error.response?.data || { message: 'Failed to create order' };
+      const status = error?.response?.status;
+      const data = error?.response?.data;
+      const msg = (data && (data.message || data.error)) || error?.message || 'Failed to create order';
+      console.error('Order creation API error:', { status, data });
+      const err = new Error(msg);
+      err.response = error?.response;
+      err.data = data;
+      throw err;
     }
   },
 
   // Get order by ID using enhanced API
   getById: async (id) => {
     try {
-      const response = await apiClient.get(`/online-orders/${id}/`);
+      const response = await apiClient.get(`/sales/get/${id}/`);
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch order:', error);
-      // Fallback to localStorage
       const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
       return orders.find(order => order.id === id) || null;
     }
   },
 
   // Cancel order using enhanced API
-  cancel: async (orderId, reason = 'Customer cancellation') => {
-    try {
-      const response = await apiClient.post(`/online-orders/${orderId}/cancel/`, {
-        reason: reason
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to cancel order:', error);
-      throw error.response?.data || { message: 'Failed to cancel order' };
-    }
-  },
+  cancel: async () => { throw { message: 'Order cancellation endpoint is not available in PANN_POS' }; },
 
   // Get order status
   getStatus: async (orderId) => {
     try {
-      const response = await apiClient.get(`/online-orders/${orderId}/`);
-      return response.data.status;
+      const response = await apiClient.get(`/sales/get/${orderId}/`);
+      return response.data?.status || 'unknown';
     } catch (error) {
-      console.error('Failed to get order status:', error);
       return 'unknown';
     }
   }
@@ -481,34 +360,28 @@ export const loyaltyAPI = {
   // Validate points redemption
   validateRedemption: async (pointsToRedeem, subtotal, customerId) => {
     try {
-      const response = await apiClient.post('/online-orders/validate-points/', {
-        customer_id: customerId,
-        points_to_redeem: pointsToRedeem,
-        subtotal: subtotal
-      });
-      return response.data;
+      // Fetch customer to check available points
+      const response = await apiClient.get(`/customers/${customerId}/`);
+      const available = response.data?.loyalty_points ?? 0;
+      const valid = typeof pointsToRedeem === 'number' && pointsToRedeem > 0 && pointsToRedeem <= available;
+      return { success: valid, available_points: available };
     } catch (error) {
-      console.error('Error validating points redemption:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to validate points redemption'
-      };
+      return { success: false, error: 'Failed to validate points redemption' };
     }
   },
 
   // Calculate loyalty points earned
   calculatePointsEarned: async (subtotalAfterDiscount) => {
     try {
-      const response = await apiClient.post('/online-orders/calculate-points/', {
-        subtotal_after_discount: subtotalAfterDiscount
-      });
-      return response.data;
-    } catch (error) {
-      console.error('Error calculating loyalty points:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to calculate loyalty points'
-      };
+      const subtotal = Number(subtotalAfterDiscount || 0);
+      if (!Number.isFinite(subtotal) || subtotal <= 0) {
+        return { success: true, data: { points_earned: 0 } };
+      }
+      // 20% earn rate (mirror backend service)
+      const points = Math.floor(subtotal * 0.20);
+      return { success: true, data: { points_earned: points } };
+    } catch (e) {
+      return { success: false, error: e.message || 'Failed to calculate points earned' };
     }
   },
 
@@ -543,32 +416,26 @@ export const stockAPI = {
   // Validate stock availability for order items
   validateStock: async (items) => {
     try {
-      const response = await apiClient.post('/online-orders/validate-stock/', {
-        items: items
-      });
+      const checkout_data = (items || []).map((item) => ({
+        product_id: item.product_id || item.id || item.productId,
+        quantity: item.quantity || 1,
+        price: item.price || item.unit_price || 0,
+      }));
+      const response = await apiClient.post('/pos/stock-validation/', { checkout_data });
       return response.data;
     } catch (error) {
-      console.error('Error validating stock:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to validate stock'
-      };
+      return { success: false, error: 'Failed to validate stock' };
     }
   },
 
   // Check individual product stock
   checkProductStock: async (productId, quantity) => {
     try {
-      const response = await apiClient.post('/online-orders/validate-stock/', {
-        items: [{ product_id: productId, quantity: quantity }]
-      });
+      const checkout_data = [{ product_id: productId, quantity: quantity || 1, price: 0 }];
+      const response = await apiClient.post('/pos/stock-validation/', { checkout_data });
       return response.data;
     } catch (error) {
-      console.error('Error checking product stock:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to check product stock'
-      };
+      return { success: false, error: 'Failed to check product stock' };
     }
   }
 };
@@ -609,8 +476,9 @@ export const promotionsAPI = {
 
   // Validate promotion eligibility
   validatePromotion: async (promotionCode, cartItems) => {
+    // No separate validate endpoint; reuse apply endpoint
     try {
-      const response = await apiClient.post('/promotions/validate/', {
+      const response = await apiClient.post('/promotions/apply/', {
         promotion_code: promotionCode,
         cart_items: cartItems
       });

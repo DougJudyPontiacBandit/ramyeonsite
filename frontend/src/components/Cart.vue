@@ -361,7 +361,7 @@
 
 <script>
 import { paymongoAPI } from '../composables/usePaymongo.js';
-import { ordersAPI, authAPI } from '../services/api.js';
+import { authAPI } from '../services/api.js';
 import { useOnlineOrder } from '../composables/api/useOnlineOrder.js';
 import { useProducts } from '../composables/api/useProducts.js';
 import { usePromotions } from '../composables/api/usePromotions.js';
@@ -582,6 +582,68 @@ export default {
       
       this.showSuccessNotification('Promo code removed');
     },
+
+    // ===============================
+    // Automatic promotion application
+    // ===============================
+    getItemDiscountForPromotion(item, promotion) {
+      if (!promotion) return 0;
+      if (!this.isItemEligibleForPromotion(item, promotion)) return 0;
+
+      const originalPrice = parseFloat(item.price);
+      let discountAmount = 0;
+
+      if (promotion.type === 'percentage') {
+        discountAmount = originalPrice * (promotion.discount_value / 100);
+      } else if (promotion.type === 'fixed_amount') {
+        discountAmount = Math.min(promotion.discount_value, originalPrice);
+      }
+
+      return Math.max(0, discountAmount);
+    },
+
+    computePromotionDiscount(promotion) {
+      if (!promotion || !Array.isArray(this.cartItems) || this.cartItems.length === 0) {
+        return 0;
+      }
+      let total = 0;
+      for (const item of this.cartItems) {
+        total += this.getItemDiscountForPromotion(item, promotion);
+      }
+      return Math.max(0, total);
+    },
+
+    async autoApplyBestPromotion() {
+      try {
+        // Do not override a manually applied promotion
+        if (this.appliedPromotion) return;
+        if (!this.activePromotions || this.activePromotions.length === 0) return;
+        if (!this.cartItems || this.cartItems.length === 0) return;
+
+        let bestPromotion = null;
+        let bestDiscount = 0;
+
+        for (const promo of this.activePromotions) {
+          if (promo.status !== 'active') continue;
+          const discount = this.computePromotionDiscount(promo);
+          if (discount > bestDiscount) {
+            bestDiscount = discount;
+            bestPromotion = promo;
+          }
+        }
+
+        if (bestPromotion && bestDiscount > 0) {
+          this.appliedPromotion = bestPromotion;
+          this.promotionDiscount = bestDiscount;
+        } else {
+          // No applicable promotion
+          this.appliedPromotion = null;
+          this.promotionDiscount = 0;
+        }
+      } catch (e) {
+        console.error('Auto-apply promotion error:', e);
+      }
+    },
     
     getPromotionDescription(promotion) {
       if (!promotion) return '';
@@ -690,10 +752,11 @@ export default {
       // Check target type and IDs
       console.log('🎯 Target type:', promotion.target_type, 'Target IDs:', promotion.target_ids);
       
-      if (promotion.target_type === 'all') {
+      const targetType = (promotion.target_type || '').toLowerCase();
+      if (targetType === 'all') {
         console.log('✅ Promotion applies to all items');
         return true;
-      } else if (promotion.target_type === 'category') {
+      } else if (targetType === 'category' || targetType === 'categories') {
         // Check if item belongs to target category
         const isCategoryMatch = promotion.target_ids && promotion.target_ids.includes(item.category_id);
         console.log('📂 Category check - Item category:', item.category_id, 'Target IDs:', promotion.target_ids, 'Match:', isCategoryMatch);
@@ -712,7 +775,7 @@ export default {
         }
         
         return isCategoryMatch;
-      } else if (promotion.target_type === 'product') {
+      } else if (targetType === 'product' || targetType === 'products') {
         // Check if item is in target products
         const isProductMatch = promotion.target_ids && promotion.target_ids.includes(item.product_id || item.id);
         console.log('🛍️ Product check - Item ID:', item.product_id || item.id, 'Match:', isProductMatch);
@@ -935,6 +998,18 @@ export default {
     async proceedToCheckout() {
       if (!this.canCheckout) return;
       
+      // Client-only submission lock to prevent duplicate creates without changing backend schema
+      try {
+        const lockKey = 'ramyeon_order_lock';
+        if (sessionStorage.getItem(lockKey) === 'locked') {
+          alert('Your order is already being processed. Please wait...');
+          return;
+        }
+        sessionStorage.setItem(lockKey, 'locked');
+      } catch (e) {
+        console.warn('Could not set submission lock:', e);
+      }
+
       this.isProcessing = true;
       
       try {
@@ -964,11 +1039,14 @@ export default {
           loyalty_points: this.useLoyaltyPoints ? this.pointsToRedeem : 0
         };
         
-        // Use composable to create order
-        const result = await this.createOrder(orderData);
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to create order');
+        // Use composable to create order (only for COD)
+        let backendOrderIdFromCreate = null;
+        if (this.paymentMethod === 'cod') {
+          const createRes = await this.createOrder(orderData);
+          if (!createRes.success) {
+            throw new Error(createRes.error || 'Failed to create order');
+          }
+          backendOrderIdFromCreate = (createRes && (createRes.data?.order_id || createRes.order_id)) || null;
         }
         
         // Order created successfully
@@ -1117,32 +1195,11 @@ export default {
           orderTime: new Date().toISOString(),
           status: paymentStatus === 'succeeded' ? 'confirmed' : 'pending',
           paymentReference: paymentReference,
-          paymentStatus: paymentStatus
+          paymentStatus: paymentStatus,
+          backendOrderId: backendOrderIdFromCreate
         };
         
-        // Send order to backend (optional - order is saved locally regardless)
-        try {
-          console.log('📤 Attempting to send order to backend...');
-          const response = await ordersAPI.create({
-            deliveryType: this.deliveryType,
-            deliveryAddress: this.deliveryAddress,
-            paymentMethod: this.paymentMethod,
-            specialInstructions: this.specialInstructions,
-            paymentReference: paymentReference,
-            paymentStatus: paymentStatus
-          });
-          
-          console.log('✅ Order created in backend:', response);
-          
-          // Update order data with backend response
-          if (response.order_id) {
-            orderData.backendOrderId = response.order_id;
-          }
-        } catch (backendError) {
-          console.warn('⚠️ Backend order creation failed (order still saved locally):', backendError.message);
-          // Continue with local order storage even if backend fails
-          // This is OK - the app works without backend
-        }
+        // Backend order was already created by createOrder(); skip duplicate calls
         
         // Handle loyalty points redemption (only for authenticated users)
         if (this.userProfile && this.userProfile.id !== 'guest' && this.useLoyaltyPoints && this.pointsToRedeem > 0) {
@@ -1224,7 +1281,7 @@ export default {
         
         // Show confirmation modal
         this.confirmedOrder = {
-          id: localOrderData.id,
+          id: localOrderData.backendOrderId || localOrderData.id,
           total: this.finalTotal.toFixed(2),
           paymentMethod: this.paymentMethod,
           deliveryType: this.deliveryType,
@@ -1264,10 +1321,29 @@ export default {
         });
         
       } catch (error) {
-        console.error('Checkout error:', error);
-        alert('There was an error processing your order. Please try again.\n\nError: ' + (error.message || 'Unknown error'));
+        // Persist detailed error info so it isn't lost when the alert closes
+        const detailed = {
+          message: error?.message || 'Unknown error',
+          stack: error?.stack,
+          name: error?.name,
+          // If an axios-style error bubbles up, capture response details
+          status: error?.response?.status,
+          statusText: error?.response?.statusText,
+          responseData: error?.response?.data,
+        };
+        try {
+          window.ramyeonLastError = detailed;
+          localStorage.setItem('ramyeon_last_error', JSON.stringify(detailed, null, 2));
+        } catch (persistErr) {
+          console.warn('Failed to persist last error for diagnostics:', persistErr);
+        }
+        console.error('Checkout error (captured):', detailed);
+        alert('There was an error processing your order. Please try again.\n\nError: ' + (detailed.message || 'Unknown error'));
       } finally {
         this.isProcessing = false;
+        try { sessionStorage.removeItem('ramyeon_order_lock'); } catch (e) {
+          console.warn('Could not clear submission lock:', e);
+        }
       }
     },
     
@@ -1287,7 +1363,10 @@ export default {
         orderTime: new Date().toISOString(),
         status: 'pending_payment',
         paymentReference: paymentReference,
-        paymentStatus: paymentStatus
+        paymentStatus: paymentStatus,
+        // Persist loyalty selection for post-return create
+        pointsToRedeem: this.useLoyaltyPoints ? this.pointsToRedeem : 0,
+        pointsDiscount: this.useLoyaltyPoints ? Math.min((this.pointsToRedeem / 4), 20) : 0
       };
       
       localStorage.setItem('ramyeon_pending_order', JSON.stringify(orderData));
@@ -1413,8 +1492,12 @@ export default {
                 
                 console.log('💾 Order saved to localStorage for user:', userId);
                 
-                // Send to backend
-                this.sendOrderToBackend(orderData);
+                // Send to backend only if it wasn't already created pre-redirect
+                if (!orderData.backendOrderId) {
+                  this.sendOrderToBackend(orderData);
+                } else {
+                  console.log('Skipping backend send - backendOrderId exists:', orderData.backendOrderId);
+                }
                 
                 // Clear pending order
                 localStorage.removeItem('ramyeon_pending_order');
@@ -1539,7 +1622,9 @@ export default {
           payment_method: orderData.paymentMethod,
           special_instructions: orderData.specialInstructions,
           payment_reference: orderData.paymentReference,
-          payment_status: orderData.paymentStatus
+          payment_status: orderData.paymentStatus,
+          // Map stored points to backend field used for redemption
+          loyalty_points: orderData.pointsToRedeem || 0
         });
         
         console.log('✅ Order sent to backend successfully:', response);
@@ -1915,6 +2000,8 @@ export default {
       console.log('🎁 Loading active promotions for per-item discounts...');
       await this.getActivePromotions();
       console.log('✅ Active promotions loaded:', this.activePromotions.length);
+      // Try auto-applying the best promotion on load
+      await this.autoApplyBestPromotion();
     } catch (error) {
       console.error('❌ Error loading promotions:', error);
     }
@@ -1948,6 +2035,8 @@ export default {
         
         // Recalculate cart totals using composable
         this.calculateCartTotals();
+        // Auto-apply best promotion when cart changes (only if none applied)
+        this.autoApplyBestPromotion();
       },
       deep: true,
       immediate: false

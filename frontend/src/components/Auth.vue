@@ -441,7 +441,7 @@ export default {
           this.loginForm.password
         );
         
-        const customer = response.customer;
+        const customer = response.customer || response.user || {};
         const userSession = {
           id: customer._id || customer.id,
           email: customer.email,

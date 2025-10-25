@@ -3,38 +3,28 @@
  * Handles payment processing for GCash, PayMaya, and Card payments
  */
 
-// Get PayMongo API keys from environment variables
-// Handle both Vue CLI (process.env) and Vite (import.meta.env) environments
-const getEnvVar = (key, defaultValue = null) => {
-  try {
-    // Try Vue CLI environment first (process.env)
-    if (typeof process !== 'undefined' && process.env && process.env[key]) {
-      return process.env[key];
-    }
-    // Try Vite environment (import.meta.env)
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      return import.meta.env[key];
-    }
-    return defaultValue;
-  } catch (error) {
-    console.warn(`Could not access environment variable ${key}:`, error);
-    return defaultValue;
-  }
-};
-
-// Get environment variables dynamically
+// IMPORTANT: Vite only injects env vars when referenced with static property names.
+// Avoid dynamic indexing like import.meta.env[key] which results in undefined.
 const getPayMongoKeys = () => {
-  // Try multiple ways to get the keys from environment variables only
-  const publicKey = getEnvVar('VUE_APP_PAYMONGO_PUBLIC_KEY') || 
-                   getEnvVar('VITE_PAYMONGO_PUBLIC_KEY');
-                   
-  const secretKey = getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') || 
-                   getEnvVar('VITE_PAYMONGO_SECRET_KEY');
-                   
-  const mode = getEnvVar('VUE_APP_PAYMONGO_MODE') || 
-              getEnvVar('VITE_PAYMONGO_MODE', 'test');
-              
-  return { publicKey, secretKey, mode };
+  // Vite
+  const viteEnv = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : undefined;
+  const vitePublic = viteEnv && viteEnv.VITE_PAYMONGO_PUBLIC_KEY;
+  const viteSecret = viteEnv && viteEnv.VITE_PAYMONGO_SECRET_KEY;
+  const viteMode = (viteEnv && viteEnv.VITE_PAYMONGO_MODE) || undefined;
+
+  // Vue CLI (catch ReferenceError when process is undefined under Vite)
+  let cliPublic;
+  let cliSecret;
+  let cliMode;
+  try { cliPublic = process.env.VUE_APP_PAYMONGO_PUBLIC_KEY; } catch (_) { /* noop */ }
+  try { cliSecret = process.env.VUE_APP_PAYMONGO_SECRET_KEY; } catch (_) { /* noop */ }
+  try { cliMode = process.env.VUE_APP_PAYMONGO_MODE; } catch (_) { /* noop */ }
+
+  return {
+    publicKey: vitePublic || cliPublic || null,
+    secretKey: viteSecret || cliSecret || null,
+    mode: viteMode || cliMode || 'test',
+  };
 };
 
 // Get keys dynamically rather than at module load time
@@ -47,17 +37,12 @@ const initKeys = () => {
   PAYMONGO_SECRET_KEY = keys.secretKey;
   PAYMONGO_MODE = keys.mode;
   
-  // Debug: Log environment variables (remove in production)
+  // Debug summary
   console.log('PayMongo Config:', {
-    hasProcessEnv: typeof process !== 'undefined' && !!process.env,
-    hasImportMeta: typeof import.meta !== 'undefined' && !!import.meta.env,
     hasPublicKey: !!PAYMONGO_PUBLIC_KEY,
     hasSecretKey: !!PAYMONGO_SECRET_KEY,
     mode: PAYMONGO_MODE,
     publicKeyPreview: PAYMONGO_PUBLIC_KEY ? `${PAYMONGO_PUBLIC_KEY.substring(0, 10)}...` : 'undefined',
-    processEnvKeys: typeof process !== 'undefined' && process.env ? Object.keys(process.env).filter(k => k.includes('PAYMONGO')) : 'no process.env',
-    importMetaEnvKeys: typeof import.meta !== 'undefined' && import.meta.env ? Object.keys(import.meta.env).filter(k => k.includes('PAYMONGO')) : 'no import.meta.env',
-    envVarsLoaded: !!(getEnvVar('VUE_APP_PAYMONGO_SECRET_KEY') || getEnvVar('VITE_PAYMONGO_SECRET_KEY'))
   });
 };
 
@@ -81,9 +66,8 @@ const convertToCentavos = (amount) => {
  * @returns {string} PayMongo secret key
  */
 const getSecretKey = () => {
-  // Always get fresh keys dynamically
-  const keys = getPayMongoKeys();
-  const secretKey = keys.secretKey;
+  // Always get fresh keys using static Vite/CLI access
+  const { secretKey } = getPayMongoKeys();
     
   if (!secretKey) {
     console.error('PayMongo secret key is undefined. Please check your .env file.');
