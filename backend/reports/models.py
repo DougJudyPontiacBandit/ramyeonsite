@@ -1,3 +1,8 @@
 from django.db import models
 
-# Report models can be added here
+from datetime import datetime
+from typing import Optional, List
+from bson import ObjectId
+
+#class SalesLog:
+    
