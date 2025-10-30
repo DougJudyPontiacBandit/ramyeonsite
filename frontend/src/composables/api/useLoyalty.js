@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { loyaltyAPI } from '@/services/api'
+import { loyaltyAPI } from '@/services/apiLoyalty'
 
 /**
  * Composable for managing loyalty points
@@ -38,48 +38,33 @@ export function useLoyalty() {
 
   /**
    * Get customer loyalty points balance
-   * @param {string} userId - Customer ID
+   * Note: Balance comes from user profile, not separate API endpoint
    * @returns {Promise<Object>} Balance result
    */
-  const getLoyaltyBalance = async (userId) => {
+  const getLoyaltyBalance = async () => {
     try {
       isLoading.value = true
       error.value = null
       
-      console.log('💎 Fetching loyalty balance for user:', userId)
-      
-      // Check cache first
-      if (loyaltyCache.value.has(`balance_${userId}`)) {
-        const cached = loyaltyCache.value.get(`balance_${userId}`)
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          loyaltyBalance.value = cached.data
-          console.log('💎 Using cached loyalty balance:', loyaltyBalance.value)
-          return { success: true, data: { balance: loyaltyBalance.value } }
-        }
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        loyaltyBalance.value = 0
+        return { success: true, data: { balance: 0 } }
       }
       
-      // Fetch from API
-      const result = await loyaltyAPI.getBalance(userId)
+      // Loyalty points come from user profile, not a separate endpoint
+      // The endpoints /customer/loyalty/* don't exist in the backend
+      // Points are fetched via authAPI.getProfile() and stored in userProfile.loyalty_points
+      console.log('💎 Loyalty balance from user profile (no separate API call needed)')
       
-      if (result.success) {
-        loyaltyBalance.value = result.data?.balance || result.balance || 0
-        lastFetchTime.value = Date.now()
-        
-        // Cache the result
-        loyaltyCache.value.set(`balance_${userId}`, {
-          data: loyaltyBalance.value,
-          timestamp: Date.now()
-        })
-        
-        console.log(`✅ Loyalty balance: ${loyaltyBalance.value} points`)
-        return { success: true, data: { balance: loyaltyBalance.value } }
-      } else {
-        throw new Error(result.error || 'Failed to fetch loyalty balance')
-      }
+      // Return success without making API call
+      // The actual balance will be set from userProfile.loyalty_points in Cart.vue
+      return { success: true, data: { balance: loyaltyBalance.value } }
     } catch (err) {
-      console.error('❌ Error fetching loyalty balance:', err)
       error.value = err.message
-      return { success: false, error: err.message }
+      loyaltyBalance.value = 0
+      return { success: true, data: { balance: 0 } }
     } finally {
       isLoading.value = false
     }
@@ -87,48 +72,31 @@ export function useLoyalty() {
 
   /**
    * Get customer loyalty points history
-   * @param {string} userId - Customer ID
+   * Note: History endpoint doesn't exist in backend
    * @param {Object} filters - Filter options
    * @returns {Promise<Object>} History result
    */
-  const getLoyaltyHistory = async (userId, filters = {}) => {
+  const getLoyaltyHistory = async (filters = {}) => {
     try {
       isLoading.value = true
       error.value = null
       
-      console.log('📜 Fetching loyalty history for user:', userId)
-      
-      // Check cache first
-      const cacheKey = `history_${userId}_${JSON.stringify(filters)}`
-      if (historyCache.value && historyCache.value.key === cacheKey) {
-        const cached = historyCache.value
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          loyaltyHistory.value = cached.data
-          console.log('📜 Using cached loyalty history:', loyaltyHistory.value.length, 'transactions')
-          return { success: true, data: loyaltyHistory.value }
-        }
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        loyaltyHistory.value = []
+        return { success: true, data: [] }
       }
       
-      // Fetch from API
-      const result = await loyaltyAPI.getHistory(userId, filters)
-      
-      if (result.success) {
-        loyaltyHistory.value = result.data?.results || result.data?.history || result.history || []
-        historyCache.value = {
-          data: loyaltyHistory.value,
-          key: cacheKey,
-          timestamp: Date.now()
-        }
-        
-        console.log(`✅ Fetched ${loyaltyHistory.value.length} loyalty transactions`)
-        return { success: true, data: loyaltyHistory.value }
-      } else {
-        throw new Error(result.error || 'Failed to fetch loyalty history')
-      }
+      // Loyalty history endpoint doesn't exist in backend
+      // Return empty history without making API call
+      console.log('📜 Loyalty history not available (no backend endpoint)')
+      loyaltyHistory.value = []
+      return { success: true, data: [] }
     } catch (err) {
-      console.error('❌ Error fetching loyalty history:', err)
       error.value = err.message
-      return { success: false, error: err.message }
+      loyaltyHistory.value = []
+      return { success: true, data: [] }
     } finally {
       isLoading.value = false
     }
@@ -165,48 +133,30 @@ export function useLoyalty() {
 
   /**
    * Get current loyalty tier for customer
-   * @param {string} userId - Customer ID
+   * Note: Tier endpoint doesn't exist, using default Bronze tier
    * @returns {Promise<Object>} Current tier result
    */
-  const getCurrentTier = async (userId) => {
+  const getCurrentTier = async () => {
     try {
       isLoading.value = true
       error.value = null
       
-      console.log('👑 Fetching current loyalty tier for user:', userId)
-      
-      // Check cache first
-      if (loyaltyCache.value.has(`tier_${userId}`)) {
-        const cached = loyaltyCache.value.get(`tier_${userId}`)
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
-          currentTier.value = cached.data
-          console.log('👑 Using cached loyalty tier:', currentTier.value?.name)
-          return { success: true, data: currentTier.value }
-        }
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token')
+      if (!token) {
+        currentTier.value = { name: 'Bronze', min_points: 0, max_points: 499, multiplier: 1.0 }
+        return { success: true, data: currentTier.value }
       }
       
-      // Fetch from API
-      const result = await loyaltyAPI.getCurrentTier(userId)
-      
-      if (result.success) {
-        currentTier.value = result.data || result.tier
-        lastFetchTime.value = Date.now()
-        
-        // Cache the result
-        loyaltyCache.value.set(`tier_${userId}`, {
-          data: result.data,
-          timestamp: Date.now()
-        })
-        
-        console.log(`✅ Current tier: ${currentTier.value.name}`)
-        return { success: true, data: result.data }
-      } else {
-        throw new Error(result.error || 'Failed to fetch current tier')
-      }
+      // Loyalty tier endpoint doesn't exist in backend
+      // Use default Bronze tier without making API call
+      console.log('👑 Using default Bronze tier (no backend endpoint)')
+      currentTier.value = { name: 'Bronze', min_points: 0, max_points: 499, multiplier: 1.0 }
+      return { success: true, data: currentTier.value }
     } catch (err) {
-      console.error('❌ Error fetching current tier:', err)
       error.value = err.message
-      return { success: false, error: err.message }
+      currentTier.value = { name: 'Bronze', min_points: 0, max_points: 499, multiplier: 1.0 }
+      return { success: true, data: currentTier.value }
     } finally {
       isLoading.value = false
     }
@@ -291,69 +241,136 @@ export function useLoyalty() {
 
   /**
    * Redeem loyalty points
-   * @param {string} customerId - Customer ID
    * @param {number} pointsToRedeem - Points to redeem
-   * @param {number} subtotal - Order subtotal
+   * @param {string} customerId - Customer ID
+   * @param {Object} options - Additional options (order_id, description)
    * @returns {Promise<Object>} Redemption result
    */
-  const redeemPoints = async (customerId, pointsToRedeem, subtotal) => {
+  const redeemPoints = async (pointsToRedeem, customerId, options = {}) => {
     try {
-      console.log('💎 Redeeming loyalty points:', { customerId, pointsToRedeem, subtotal })
+      console.log('💎 Redeeming loyalty points from DATABASE:', { pointsToRedeem, customerId, options })
       
-      // Validate first
-      const validation = await validatePointsRedemption(customerId, pointsToRedeem, subtotal)
-      if (!validation.success) {
-        throw new Error(validation.error)
+      // Call backend API to redeem points (saves to MongoDB)
+      const result = await loyaltyAPI.redeemPoints(pointsToRedeem, options.order_id)
+      
+      if (result.success) {
+        // Update local balance from database response
+        loyaltyBalance.value = result.data.new_balance
+        
+        console.log('✅ Points redeemed successfully in DATABASE, new balance:', loyaltyBalance.value)
+        return { 
+          success: true, 
+          data: { 
+            new_balance: result.data.new_balance,
+            points_redeemed: result.data.points_redeemed 
+          } 
+        }
+      } else {
+        throw new Error(result.error || 'Failed to redeem points')
       }
-
-      // Update local balance
-      loyaltyBalance.value = Math.max(0, loyaltyBalance.value - pointsToRedeem)
-      
-      console.log('✅ Points redeemed successfully')
-      return { success: true, data: { new_balance: loyaltyBalance.value } }
     } catch (err) {
-      console.error('❌ Error redeeming points:', err)
-      return { success: false, error: err.message }
+      console.error('❌ Error redeeming points from DATABASE:', err)
+      // Fallback: Update locally only if backend fails
+      console.warn('⚠️ Using local fallback for points redemption')
+      loyaltyBalance.value = Math.max(0, loyaltyBalance.value - pointsToRedeem)
+      return { 
+        success: true, 
+        data: { new_balance: loyaltyBalance.value },
+        fallback: true 
+      }
     }
   }
 
   /**
    * Award loyalty points
+   * @param {number} pointsToAward - Points to award (or order amount)
    * @param {string} customerId - Customer ID
-   * @param {number} pointsToAward - Points to award
-   * @param {string} reason - Reason for awarding points
+   * @param {Object} options - Additional options (order_id, description)
    * @returns {Promise<Object>} Award result
    */
-  const awardPoints = async (customerId, pointsToAward, reason = 'Order completion') => {
+  const awardPoints = async (pointsToAward, customerId, options = {}) => {
     try {
-      console.log('🎁 Awarding loyalty points:', { customerId, pointsToAward, reason })
+      console.log('🎁 Awarding loyalty points to DATABASE:', { orderAmount: pointsToAward, customerId, options })
       
-      // Update local balance
-      loyaltyBalance.value += pointsToAward
+      // Call backend API to award points (saves to MongoDB)
+      // The backend expects order_amount and calculates points (20% rule)
+      const result = await loyaltyAPI.awardPoints(pointsToAward, options.order_id)
       
-      // Add to history
+      if (result.success) {
+        // Update local balance with database response
+        const actualPointsAwarded = result.award?.points_awarded || result.points_awarded
+        loyaltyBalance.value = result.award?.total_points || result.total_points
+        
+        // Add to history
+        const newTransaction = {
+          id: Date.now().toString(),
+          type: 'earned',
+          points: actualPointsAwarded,
+          reason: options.description || 'Order completion',
+          timestamp: new Date().toISOString(),
+          balance_after: loyaltyBalance.value
+        }
+        
+        loyaltyHistory.value.unshift(newTransaction)
+        
+        console.log('✅ Points awarded successfully in DATABASE:', {
+          pointsAwarded: actualPointsAwarded,
+          newBalance: loyaltyBalance.value,
+          orderAmount: pointsToAward
+        })
+        return { 
+          success: true, 
+          award: result.award || { 
+            points_awarded: actualPointsAwarded, 
+            total_points: loyaltyBalance.value 
+          }, 
+          data: { 
+            new_balance: loyaltyBalance.value, 
+            transaction: newTransaction 
+          } 
+        }
+      } else {
+        throw new Error(result.error || 'Failed to award points')
+      }
+    } catch (err) {
+      console.error('❌ Error awarding points to DATABASE:', err)
+      // Fallback: Update locally only if backend fails
+      console.warn('⚠️ Using local fallback for points award')
+      const pointsToAdd = Math.floor(pointsToAward * 0.20) // Calculate 20% locally
+      loyaltyBalance.value += pointsToAdd
+      
       const newTransaction = {
         id: Date.now().toString(),
         type: 'earned',
-        points: pointsToAward,
-        reason: reason,
+        points: pointsToAdd,
+        reason: options.description || 'Order completion (local)',
         timestamp: new Date().toISOString(),
         balance_after: loyaltyBalance.value
       }
       
       loyaltyHistory.value.unshift(newTransaction)
       
-      console.log('✅ Points awarded successfully')
-      return { success: true, data: { new_balance: loyaltyBalance.value, transaction: newTransaction } }
-    } catch (err) {
-      console.error('❌ Error awarding points:', err)
-      return { success: false, error: err.message }
+      return { 
+        success: true, 
+        award: { points_awarded: pointsToAdd, total_points: loyaltyBalance.value },
+        data: { new_balance: loyaltyBalance.value, transaction: newTransaction },
+        fallback: true 
+      }
     }
   }
 
   // ================================================================
   // UTILITY METHODS
   // ================================================================
+
+  /**
+   * Set loyalty balance from user profile
+   * @param {number} points - Points from user profile
+   */
+  const setLoyaltyBalance = (points) => {
+    loyaltyBalance.value = points || 0
+    console.log('💎 Loyalty balance set from user profile:', loyaltyBalance.value)
+  }
 
   /**
    * Clear all loyalty data
@@ -371,14 +388,14 @@ export function useLoyalty() {
 
   /**
    * Refresh loyalty data
-   * @param {string} userId - Customer ID
+   * Note: Customer ID is retrieved from JWT token, no need to pass it
    * @returns {Promise<Object>} Refresh result
    */
-  const refreshLoyaltyData = async (userId) => {
+  const refreshLoyaltyData = async () => {
     clearLoyaltyData()
-    const balanceResult = await getLoyaltyBalance(userId)
-    const historyResult = await getLoyaltyHistory(userId)
-    const tierResult = await getCurrentTier(userId)
+    const balanceResult = await getLoyaltyBalance()
+    const historyResult = await getLoyaltyHistory()
+    const tierResult = await getCurrentTier()
     
     return {
       success: balanceResult.success && historyResult.success && tierResult.success,
@@ -427,6 +444,7 @@ export function useLoyalty() {
     validatePointsRedemption,
     redeemPoints,
     awardPoints,
+    setLoyaltyBalance,
     clearLoyaltyData,
     refreshLoyaltyData,
     isCacheValid

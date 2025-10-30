@@ -19,9 +19,19 @@
             <h3>{{ order.id }}</h3>
             <span class="order-date">{{ formatDate(order.orderTime) }}</span>
           </div>
-          <div class="order-status" :class="'status-' + order.status">
-            {{ formatStatus(order.status) }}
-          </div>
+        </div>
+
+        <!-- ORDER STATUS TRACKER (NEW!) -->
+        <div class="order-status-section">
+          <OrderStatusTracker
+            :orderId="order.id"
+            :currentStatus="order.status"
+            :showHistory="false"
+            :showRefresh="true"
+            :autoRefresh="true"
+            :refreshInterval="60000"
+            @status-updated="handleStatusUpdate"
+          />
         </div>
 
         <div class="order-items">
@@ -29,13 +39,18 @@
           <div class="items-list">
             <div v-for="(item, index) in order.items" :key="index" class="order-item">
               <div class="item-info">
-                <img :src="item.image" :alt="item.name" class="item-image" />
+                <img 
+                  :src="getItemImage(item)" 
+                  :alt="getItemName(item)" 
+                  class="item-image"
+                  @error="handleImageError"
+                />
                 <div class="item-details">
-                  <p class="item-name">{{ item.name }}</p>
+                  <p class="item-name">{{ getItemName(item) }}</p>
                   <p class="item-quantity">Qty: {{ item.quantity }}</p>
                 </div>
               </div>
-              <p class="item-price">₱{{ (item.price * item.quantity).toFixed(2) }}</p>
+              <p class="item-price">₱{{ ((item.price || 0) * (item.quantity || 1)).toFixed(2) }}</p>
             </div>
           </div>
         </div>
@@ -98,17 +113,37 @@
           <button @click="closeModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
+          <!-- ORDER STATUS TRACKER WITH FULL HISTORY -->
+          <div class="detail-section">
+            <h3>Order Status</h3>
+            <OrderStatusTracker
+              :orderId="selectedOrder.id"
+              :currentStatus="selectedOrder.status"
+              :showHistory="true"
+              :showRefresh="true"
+              :autoRefresh="false"
+              @status-updated="handleStatusUpdate"
+            />
+          </div>
+
           <div class="detail-section">
             <h3>Order Information</h3>
             <p><strong>Order ID:</strong> {{ selectedOrder.id }}</p>
             <p><strong>Date:</strong> {{ formatDate(selectedOrder.orderTime) }}</p>
-            <p><strong>Status:</strong> {{ formatStatus(selectedOrder.status) }}</p>
           </div>
           <div class="detail-section">
             <h3>Items</h3>
             <div v-for="(item, index) in selectedOrder.items" :key="index" class="modal-item">
-              <p>{{ item.name }} x {{ item.quantity }}</p>
-              <p>₱{{ (item.price * item.quantity).toFixed(2) }}</p>
+              <div class="modal-item-info">
+                <img 
+                  :src="getItemImage(item)" 
+                  :alt="getItemName(item)" 
+                  class="modal-item-image"
+                  @error="handleImageError"
+                />
+                <p>{{ getItemName(item) }} x {{ item.quantity }}</p>
+              </div>
+              <p>₱{{ ((item.price || 0) * (item.quantity || 1)).toFixed(2) }}</p>
             </div>
           </div>
           <div class="detail-section">
@@ -130,10 +165,14 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api.js';
+import { authAPI, ordersAPI } from '../services/api.js';
+import OrderStatusTracker from './OrderStatusTracker.vue';
 
 export default {
   name: 'OrderHistory',
+  components: {
+    OrderStatusTracker
+  },
   data() {
     return {
       orders: [],
@@ -160,16 +199,58 @@ export default {
           console.log('Not logged in or failed to get profile');
         }
         
-        // Load user-specific orders
+        console.log('📦 Loading orders from database...');
+        
+        // First, try to fetch orders from database (NEW!)
+        try {
+          const result = await ordersAPI.getAll();
+          
+          if (result.success && result.results) {
+            // Map database orders to component format
+            this.orders = result.results.map(order => ({
+              id: order.order_id,
+              orderTime: order.created_at || order.transaction_date,
+              status: order.order_status || order.status || 'pending',
+              items: (order.items || []).map(item => ({
+                // Map database item structure to display structure
+                id: item.product_id || item.id,
+                name: item.product_name || item.name || 'Unknown Item',
+                image: item.image || item.imageUrl || '',
+                quantity: item.quantity || 1,
+                price: item.price || 0,
+                category: item.category || '',
+                description: item.description || ''
+              })),
+              subtotal: order.subtotal || 0,
+              deliveryFee: order.delivery_fee || 0,
+              serviceFee: order.service_fee || 0,
+              total: order.total_amount || 0,
+              deliveryType: order.delivery_type || 'delivery',
+              deliveryAddress: order.delivery_address?.fullAddress || order.delivery_address?.street || '',
+              paymentMethod: order.payment_method || 'cash',
+              paymentStatus: order.payment_status || 'pending',
+              paymentReference: order.payment_reference || '',
+              specialInstructions: order.notes || '',
+              // NEW: Include status_info for the tracker
+              status_info: order.status_info || null
+            }));
+            console.log('✅ Loaded', this.orders.length, 'orders from database');
+            return;
+          }
+        } catch (dbError) {
+          console.warn('⚠️ Could not fetch from database, falling back to localStorage:', dbError);
+        }
+        
+        // Fallback to localStorage if database fetch fails
         const userId = this.userProfile?.id || this.userProfile?.email || 'guest';
         const userOrdersKey = `ramyeon_orders_${userId}`;
         
-        console.log('📦 Loading orders for user:', userId);
+        console.log('📦 Loading orders from localStorage for user:', userId);
         
         const savedOrders = localStorage.getItem(userOrdersKey);
         if (savedOrders) {
           this.orders = JSON.parse(savedOrders);
-          console.log('✅ Loaded', this.orders.length, 'orders for user');
+          console.log('✅ Loaded', this.orders.length, 'orders from localStorage');
         } else {
           // Fallback to global orders for backwards compatibility
           const globalOrders = localStorage.getItem('ramyeon_orders');
@@ -273,6 +354,39 @@ export default {
       localStorage.setItem('ramyeon_cart', JSON.stringify(cart));
       alert('Items added to cart!');
       this.$emit('setCurrentPage', 'Cart');
+    },
+    handleStatusUpdate(data) {
+      // Handle status update events from OrderStatusTracker
+      console.log('📊 Order status updated:', data);
+      
+      // Update the local order status
+      const orderIndex = this.orders.findIndex(o => o.id === data.orderId);
+      if (orderIndex !== -1) {
+        this.orders[orderIndex].status = data.status;
+        this.orders[orderIndex].status_info = data.statusInfo;
+      }
+      
+      // Optionally show a notification
+      // You can add a toast notification here if you have one
+    },
+    getItemName(item) {
+      // Helper to get item name from various possible fields
+      return item.name || item.product_name || item.productName || 'Unknown Item';
+    },
+    getItemImage(item) {
+      // Helper to get item image with fallback
+      const image = item.image || item.imageUrl || item.img || '';
+      
+      // If no image, return a default placeholder
+      if (!image) {
+        return 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="16" text-anchor="middle" dy=".3em" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
+      }
+      
+      return image;
+    },
+    handleImageError(event) {
+      // Fallback image if image fails to load
+      event.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50" y="50" font-size="16" text-anchor="middle" dy=".3em" fill="%23999"%3ENo Image%3C/text%3E%3C/svg%3E';
     }
   },
   mounted() {
@@ -369,6 +483,14 @@ export default {
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 2px solid #f0f0f0;
+}
+
+.order-status-section {
+  margin-bottom: 25px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
 }
 
 .order-info h3 {
@@ -685,10 +807,24 @@ export default {
 .modal-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 10px;
   background: #f8f9fa;
   border-radius: 8px;
   margin: 8px 0;
+}
+
+.modal-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-item-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 @media (max-width: 768px) {

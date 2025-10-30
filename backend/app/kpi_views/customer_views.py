@@ -381,3 +381,250 @@ class CustomerLoyaltyView(APIView):
                 {"error": str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+
+# ========== CUSTOMER-FACING LOYALTY ENDPOINTS (JWT AUTH) ==========
+
+class CustomerLoyaltyBalanceView(APIView):
+    """Get current customer's loyalty points balance (JWT auth)"""
+    def __init__(self):
+        self.customer_service = CustomerService()
+
+    @require_authentication
+    def get(self, request):
+        """Get authenticated customer's loyalty points balance"""
+        try:
+            # Get customer ID from JWT token
+            customer_id = request.current_user.get('_id')
+            
+            if not customer_id:
+                return Response(
+                    {"error": "Customer not authenticated"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Get customer data
+            customer = self.customer_service.get_customer_by_id(customer_id)
+            
+            if not customer:
+                return Response(
+                    {"error": "Customer not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            return Response({
+                "balance": customer.get('loyalty_points', 0),
+                "customer_id": str(customer_id)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error getting loyalty balance: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CustomerLoyaltyRedeemView(APIView):
+    """Redeem loyalty points for current customer (JWT auth)"""
+    def __init__(self):
+        self.customer_service = CustomerService()
+
+    @require_authentication
+    def post(self, request):
+        """Redeem loyalty points"""
+        try:
+            customer_id = request.current_user.get('_id')
+            points_to_redeem = request.data.get('points_to_redeem', 0)
+            order_id = request.data.get('order_id')
+            
+            if not customer_id:
+                return Response(
+                    {"error": "Customer not authenticated"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            if points_to_redeem <= 0:
+                return Response(
+                    {"error": "Points to redeem must be positive"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Redeem points
+            updated_customer = self.customer_service.redeem_loyalty_points(
+                customer_id,
+                points_to_redeem,
+                reason=f"Redeemed for order {order_id}" if order_id else "Points redemption",
+                current_user=request.current_user
+            )
+            
+            if updated_customer:
+                return Response({
+                    "success": True,
+                    "new_balance": updated_customer.get('loyalty_points', 0),
+                    "points_redeemed": points_to_redeem
+                }, status=status.HTTP_200_OK)
+            
+            return Response(
+                {"error": "Failed to redeem points"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        except ValueError as e:
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(f"Error redeeming loyalty points: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CustomerLoyaltyAwardView(APIView):
+    """Award loyalty points to current customer (JWT auth)"""
+    def __init__(self):
+        self.customer_service = CustomerService()
+
+    @require_authentication  
+    def post(self, request):
+        """Award loyalty points based on order amount"""
+        try:
+            customer_id = request.current_user.get('_id')
+            order_amount = request.data.get('order_amount', 0)
+            order_id = request.data.get('order_id')
+            
+            if not customer_id:
+                return Response(
+                    {"error": "Customer not authenticated"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            if order_amount <= 0:
+                return Response(
+                    {"error": "Order amount must be positive"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Calculate points (20% of order amount)
+            points_to_award = int(order_amount * 0.20)
+            
+            # Award points
+            updated_customer = self.customer_service.update_loyalty_points(
+                customer_id,
+                points_to_award,
+                reason=f"Points earned from order {order_id}" if order_id else "Purchase reward",
+                current_user=request.current_user
+            )
+            
+            if updated_customer:
+                return Response({
+                    "success": True,
+                    "points_awarded": points_to_award,
+                    "total_points": updated_customer.get('loyalty_points', 0),
+                    "order_amount": order_amount
+                }, status=status.HTTP_200_OK)
+            
+            return Response(
+                {"error": "Failed to award points"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        except Exception as e:
+            logger.error(f"Error awarding loyalty points: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CustomerLoyaltyHistoryView(APIView):
+    """Get current customer's loyalty points history (JWT auth)"""
+    def __init__(self):
+        self.customer_service = CustomerService()
+
+    @require_authentication
+    def get(self, request):
+        """Get authenticated customer's loyalty points history"""
+        try:
+            customer_id = request.current_user.get('_id')
+            
+            if not customer_id:
+                return Response(
+                    {"error": "Customer not authenticated"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Get customer data
+            customer = self.customer_service.get_customer_by_id(customer_id)
+            
+            if not customer:
+                return Response(
+                    {"error": "Customer not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get loyalty history
+            history = customer.get('loyalty_history', [])
+            
+            return Response({
+                "results": history,
+                "count": len(history)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error getting loyalty history: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class CustomerLoyaltyCurrentTierView(APIView):
+    """Get current customer's loyalty tier (JWT auth)"""
+    def __init__(self):
+        self.customer_service = CustomerService()
+
+    @require_authentication
+    def get(self, request):
+        """Get authenticated customer's current loyalty tier"""
+        try:
+            customer_id = request.current_user.get('_id')
+            
+            if not customer_id:
+                return Response(
+                    {"error": "Customer not authenticated"}, 
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            
+            # Get customer data
+            customer = self.customer_service.get_customer_by_id(customer_id)
+            
+            if not customer:
+                return Response(
+                    {"error": "Customer not found"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Calculate tier based on points
+            points = customer.get('loyalty_points', 0)
+            
+            if points >= 3000:
+                tier = {"name": "Platinum", "min_points": 3000, "max_points": None, "multiplier": 2.0}
+            elif points >= 1500:
+                tier = {"name": "Gold", "min_points": 1500, "max_points": 2999, "multiplier": 1.5}
+            elif points >= 500:
+                tier = {"name": "Silver", "min_points": 500, "max_points": 1499, "multiplier": 1.25}
+            else:
+                tier = {"name": "Bronze", "min_points": 0, "max_points": 499, "multiplier": 1.0}
+            
+            return Response(tier, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error getting current tier: {e}")
+            return Response(
+                {"error": str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

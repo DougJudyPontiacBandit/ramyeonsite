@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta
 from ..database import db_manager
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class OnlineTransactionService:
@@ -32,6 +35,10 @@ class OnlineTransactionService:
                 'quantity': qty,
                 'price': price,
                 'subtotal': line_subtotal,
+                # Include additional product details for order history display
+                'image': item.get('image') or item.get('imageUrl') or '',
+                'category': item.get('category') or '',
+                'description': item.get('description') or '',
             })
             subtotal += line_subtotal
         return computed, round(subtotal, 2)
@@ -72,6 +79,12 @@ class OnlineTransactionService:
                 customer = self.customers.find_one({'_id': customer_id})
             except Exception:
                 customer = None
+
+        # Validate loyalty points if redeeming
+        if points_to_redeem > 0 and customer:
+            current_points = customer.get('loyalty_points', 0)
+            if current_points < points_to_redeem:
+                raise ValueError(f"Insufficient loyalty points. Available: {current_points}, Requested: {points_to_redeem}")
 
         # Build items and totals
         items, subtotal = self._compute_items(items_in)
@@ -124,6 +137,51 @@ class OnlineTransactionService:
 
         self.online_transactions.insert_one(order_record)
         doc = order_record
+
+        # Deduct loyalty points from customer balance if points were redeemed
+        if pts_used > 0 and customer:
+            try:
+                self.customers.update_one(
+                    {'_id': customer_id},
+                    {
+                        '$inc': {'loyalty_points': -pts_used},
+                        '$set': {'last_updated': now_utc},
+                        '$push': {
+                            'loyalty_history': {
+                                'points': -pts_used,
+                                'reason': f"Redeemed for order {order_id}",
+                                'date': now_utc,
+                                'order_id': order_id
+                            }
+                        }
+                    }
+                )
+            except Exception as e:
+                # Log error but don't fail the order creation
+                logger.error(f"Failed to deduct loyalty points for order {order_id}: {e}")
+
+        # Award loyalty points earned from this purchase
+        points_earned = order_record.get('loyalty_points_earned', 0)
+        if points_earned > 0 and customer:
+            try:
+                self.customers.update_one(
+                    {'_id': customer_id},
+                    {
+                        '$inc': {'loyalty_points': points_earned},
+                        '$set': {'last_updated': now_utc},
+                        '$push': {
+                            'loyalty_history': {
+                                'points': points_earned,
+                                'reason': f"Earned from order {order_id}",
+                                'date': now_utc,
+                                'order_id': order_id
+                            }
+                        }
+                    }
+                )
+            except Exception as e:
+                # Log error but don't fail the order creation
+                logger.error(f"Failed to award loyalty points for order {order_id}: {e}")
 
         return {
             'success': True,

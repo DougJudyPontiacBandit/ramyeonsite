@@ -12,6 +12,7 @@ export function usePromotions() {
   
   const promotions = ref([])
   const activePromotions = ref([])
+  const appliedPromotions = ref([]) // Track promotions applied to cart
   const isLoading = ref(false)
   const error = ref(null)
   const isValidating = ref(false)
@@ -365,6 +366,7 @@ export function usePromotions() {
   const clearPromotions = () => {
     promotions.value = []
     activePromotions.value = []
+    appliedPromotions.value = []
     error.value = null
     validationError.value = null
     promotionsCache.value.clear()
@@ -397,6 +399,7 @@ export function usePromotions() {
     // State
     promotions,
     activePromotions,
+    appliedPromotions, // Export applied promotions for tracking
     isLoading,
     error,
     isValidating,

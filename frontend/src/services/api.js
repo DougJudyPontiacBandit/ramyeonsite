@@ -270,15 +270,29 @@ export const cartAPI = {
 
 // Enhanced Orders API - Connected to enhanced online transaction endpoints
 export const ordersAPI = {
-  // Get all orders for current user
-  getAll: async () => {
+  // Get all orders for current user from database
+  getAll: async (limit = 50, offset = 0) => {
     try {
-      // Use backend recent sales if available
-      const response = await apiClient.get('/sales/recent/');
-      return response.data;
+      // Check if user is authenticated
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('⚠️ No token found, using localStorage fallback');
+        const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
+        return { success: true, results: orders };
+      }
+
+      // Fetch from customer order history endpoint
+      const response = await apiClient.get('/online/orders/history/', {
+        params: { limit, offset }
+      });
+      
+      console.log('✅ Fetched orders from database:', response.data.count, 'orders');
+      return { success: true, ...response.data };
     } catch (error) {
+      console.error('❌ Error fetching orders from database:', error);
+      // Fallback to localStorage only if database fails
       const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-      return { results: orders };
+      return { success: false, results: orders, error: error.message };
     }
   },
 
@@ -329,13 +343,89 @@ export const ordersAPI = {
   // Cancel order using enhanced API
   cancel: async () => { throw { message: 'Order cancellation endpoint is not available in PANN_POS' }; },
 
-  // Get order status
+  // Get order status with full tracking info
   getStatus: async (orderId) => {
     try {
-      const response = await apiClient.get(`/sales/get/${orderId}/`);
-      return response.data?.status || 'unknown';
+      // Validate orderId
+      if (!orderId) {
+        console.error('❌ Order ID is required');
+        return { success: false, error: 'Order ID is required' };
+      }
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('⚠️ No token found for order status');
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const response = await apiClient.get(`/online/orders/${orderId}/status/`);
+      console.log('✅ Order status fetched:', response.data);
+      return { success: true, ...response.data };
     } catch (error) {
-      return 'unknown';
+      console.error('❌ Error fetching order status:', error);
+      
+      // Handle specific error cases
+      if (error.response) {
+        if (error.response.status === 404) {
+          return { success: false, error: 'Order not found' };
+        } else if (error.response.status === 403) {
+          return { success: false, error: 'Unauthorized access to order' };
+        } else if (error.response.status === 401) {
+          return { success: false, error: 'Authentication required' };
+        }
+        return { success: false, error: error.response.data?.message || 'Failed to fetch order status' };
+      }
+      
+      return { success: false, error: error.message || 'Network error' };
+    }
+  },
+
+  // Update order status (for POS/Admin)
+  updateStatus: async (orderId, newStatus, notes = '') => {
+    try {
+      // Validate inputs
+      if (!orderId) {
+        console.error('❌ Order ID is required');
+        return { success: false, error: 'Order ID is required' };
+      }
+      
+      if (!newStatus) {
+        console.error('❌ Status is required');
+        return { success: false, error: 'Status is required' };
+      }
+
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('⚠️ No token found for order status update');
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const response = await apiClient.post(`/online/orders/${orderId}/update-status/`, {
+        status: newStatus,
+        notes: notes || ''
+      });
+      console.log('✅ Order status updated:', response.data);
+      return { success: true, ...response.data };
+    } catch (error) {
+      console.error('❌ Error updating order status:', error);
+      
+      // Handle specific error cases
+      if (error.response) {
+        if (error.response.status === 403) {
+          return { success: false, error: 'Unauthorized. Only POS staff can update order status.' };
+        } else if (error.response.status === 404) {
+          return { success: false, error: 'Order not found' };
+        } else if (error.response.status === 400) {
+          return { success: false, error: error.response.data?.message || 'Invalid status' };
+        } else if (error.response.status === 401) {
+          return { success: false, error: 'Authentication required' };
+        }
+      }
+      
+      return { 
+        success: false, 
+        error: error.response?.data?.message || error.message || 'Failed to update order status'
+      };
     }
   }
 };

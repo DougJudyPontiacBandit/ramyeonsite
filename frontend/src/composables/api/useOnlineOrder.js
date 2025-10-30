@@ -551,10 +551,33 @@ export function useOnlineOrder() {
       if (itemIndex > -1) {
         cartItems.value.splice(itemIndex, 1)
         
+        // Recalculate promotion discounts for all applied promotions
+        if (appliedPromotions.value && appliedPromotions.value.length > 0) {
+          console.log('🔄 Recalculating promotion discounts after item removal...')
+          
+          // Reset cart discount
+          cartDiscount.value = 0
+          
+          // Recalculate discount for each applied promotion
+          for (const promotion of appliedPromotions.value) {
+            const newDiscount = calculatePromotionDiscount(promotion, cartItems.value)
+            promotion.discount_amount = newDiscount
+            cartDiscount.value += newDiscount
+            
+            console.log('🎯 Updated promotion discount:', {
+              promotion: promotion.name,
+              newDiscount: newDiscount
+            })
+          }
+          
+          // Remove promotions that no longer apply (discount = 0)
+          appliedPromotions.value = appliedPromotions.value.filter(p => p.discount_amount > 0)
+        }
+        
         // Recalculate cart totals
         await calculateCartTotals()
         
-        console.log('✅ Item removed from cart')
+        console.log('✅ Item removed from cart with promotion recalculation')
         return { success: true, data: { cartItems: cartItems.value } }
       } else {
         throw new Error('Item not found in cart')
@@ -592,10 +615,31 @@ export function useOnlineOrder() {
       if (itemIndex > -1) {
         cartItems.value[itemIndex].quantity = quantity
         
+        // Recalculate promotion discounts for all applied promotions
+        if (appliedPromotions.value && appliedPromotions.value.length > 0) {
+          console.log('🔄 Recalculating promotion discounts after quantity change...')
+          
+          // Reset cart discount
+          cartDiscount.value = 0
+          
+          // Recalculate discount for each applied promotion
+          for (const promotion of appliedPromotions.value) {
+            const newDiscount = calculatePromotionDiscount(promotion, cartItems.value)
+            promotion.discount_amount = newDiscount
+            cartDiscount.value += newDiscount
+            
+            console.log('🎯 Updated promotion discount:', {
+              promotion: promotion.name,
+              oldDiscount: promotion.discount_amount,
+              newDiscount: newDiscount
+            })
+          }
+        }
+        
         // Recalculate cart totals
         await calculateCartTotals()
         
-        console.log('✅ Cart item quantity updated')
+        console.log('✅ Cart item quantity updated with promotion recalculation')
         return { success: true, data: { cartItems: cartItems.value } }
       } else {
         throw new Error('Item not found in cart')
@@ -620,7 +664,10 @@ export function useOnlineOrder() {
     // Clear applied promotions
     appliedPromotions.value = []
     
-    console.log('🗑️ Cart cleared')
+    // Clear localStorage
+    localStorage.removeItem('ramyeon_cart')
+    
+    console.log('🗑️ Cart cleared (including localStorage)')
   }
   
   /**
@@ -668,28 +715,54 @@ export function useOnlineOrder() {
   const calculatePromotionDiscount = (promotion, cartItems) => {
     try {
       console.log('🧮 Calculating promotion discount:', promotion.name)
+      console.log('🧮 Cart items for discount calculation:', cartItems)
       
       // For drinks promotion (10% off)
       if (promotion.name && promotion.name.toLowerCase().includes('drink')) {
-        // Find drinks in cart
+        // Find drinks in cart - check both category and name
         const drinksItems = cartItems.filter(item => {
           const itemName = (item.name || item.product_name || '').toLowerCase()
+          const itemCategory = (item.category || '').toLowerCase()
+          
+          // Check if category is drinks
+          if (itemCategory.includes('drink') || itemCategory.includes('beverage')) {
+            return true
+          }
+          
+          // Check name for drink-related keywords (expanded list)
           return itemName.includes('drink') || 
                  itemName.includes('7 up') || 
                  itemName.includes('bottle') || 
                  itemName.includes('can') ||
                  itemName.includes('juice') ||
                  itemName.includes('soda') ||
-                 itemName.includes('water')
+                 itemName.includes('water') ||
+                 itemName.includes('alaska') ||  // Added Alaska
+                 itemName.includes('coke') ||
+                 itemName.includes('pepsi') ||
+                 itemName.includes('sprite') ||
+                 itemName.includes('mountain dew') ||
+                 itemName.includes('gatorade') ||
+                 itemName.includes('powerade') ||
+                 itemName.includes('tea') ||
+                 itemName.includes('coffee') ||
+                 itemName.includes('milk')
         })
+        
+        console.log('🧮 Filtered drinks items:', drinksItems)
         
         if (drinksItems.length > 0) {
           // Calculate 10% discount on drinks
           const drinksSubtotal = drinksItems.reduce((total, item) => {
-            return total + (item.price || item.selling_price || 0) * (item.quantity || 1)
+            const itemPrice = item.price || item.selling_price || 0
+            const itemQty = item.quantity || 1
+            const itemTotal = itemPrice * itemQty
+            console.log(`🧮 Item: ${item.name}, Price: ${itemPrice}, Qty: ${itemQty}, Total: ${itemTotal}`)
+            return total + itemTotal
           }, 0)
           
           const discount = drinksSubtotal * 0.1 // 10% discount
+          console.log('🧮 Drinks subtotal:', drinksSubtotal)
           console.log('🧮 Drinks discount calculated:', discount)
           return Math.round(discount * 100) / 100 // Round to 2 decimal places
         }
@@ -876,13 +949,16 @@ export function useOnlineOrder() {
         appliedPromotions.value.splice(index, 1)
       }
       
-      // Update cart discount
-      cartDiscount.value -= pointsPromotion.discount_amount
+      // Update cart discount - safely handle undefined discount_amount
+      const discountAmount = pointsPromotion.discount_amount || 0
+      cartDiscount.value -= discountAmount
       
       // Recalculate totals
       calculateCartTotals()
       
       console.log('✅ Loyalty points removed from cart')
+    } else {
+      console.log('ℹ️ No loyalty points promotion to remove')
     }
   }
   

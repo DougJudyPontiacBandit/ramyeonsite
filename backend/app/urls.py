@@ -39,6 +39,12 @@ from .kpi_views.customer_views import (
     CustomerLoyaltyView,
     CustomerLoginView,
     CustomerCurrentUserView,
+    # Customer-facing loyalty endpoints (JWT auth)
+    CustomerLoyaltyBalanceView,
+    CustomerLoyaltyRedeemView,
+    CustomerLoyaltyAwardView,
+    CustomerLoyaltyHistoryView,
+    CustomerLoyaltyCurrentTierView,
 )
 
 from .kpi_views.supplier_views import (
@@ -230,6 +236,13 @@ from .kpi_views.sales_display_views import (
 # Online orders
 from .kpi_views.online_transaction_views import (
     CreateOnlineOrderView,
+    CustomerOrderHistoryView,
+)
+
+# Order status tracking
+from .kpi_views.order_status_views import (
+    UpdateOrderStatusView,
+    GetOrderStatusView,
 )
 
 from .views import (
@@ -250,6 +263,13 @@ urlpatterns = [
     path('auth/verify-token/', VerifyTokenView.as_view(), name='verify-token'),
     path('auth/customer/login/', CustomerLoginView.as_view(), name='customer-login'),
     path('auth/customer/me/', CustomerCurrentUserView.as_view(), name='customer-current-user'),
+    
+    # ========== CUSTOMER LOYALTY (JWT AUTH) ==========
+    path('customer/loyalty/balance/', CustomerLoyaltyBalanceView.as_view(), name='customer-loyalty-balance'),
+    path('customer/loyalty/history/', CustomerLoyaltyHistoryView.as_view(), name='customer-loyalty-history'),
+    path('customer/loyalty/current-tier/', CustomerLoyaltyCurrentTierView.as_view(), name='customer-loyalty-current-tier'),
+    path('customer/loyalty/redeem/', CustomerLoyaltyRedeemView.as_view(), name='customer-loyalty-redeem'),
+    path('customer/loyalty/award/', CustomerLoyaltyAwardView.as_view(), name='customer-loyalty-award'),
     
     # ========== USER MANAGEMENT ==========
     path('users/', UserListView.as_view(), name='user-list'),
@@ -433,6 +453,9 @@ urlpatterns = [
 
     # ========== ONLINE ORDERS (Customer Website) ==========
     path('online/orders/create/', CreateOnlineOrderView.as_view(), name='create_online_order'),
+    path('online/orders/history/', CustomerOrderHistoryView.as_view(), name='customer_order_history'),
+    path('online/orders/<str:order_id>/status/', GetOrderStatusView.as_view(), name='get_order_status'),
+    path('online/orders/<str:order_id>/update-status/', UpdateOrderStatusView.as_view(), name='update_order_status'),
     
     # ========== PROMOTIONS ==========
     path('promotions/', PromotionListView.as_view(), name='promotion-list'),
