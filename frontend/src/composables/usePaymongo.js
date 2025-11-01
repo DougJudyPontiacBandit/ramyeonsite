@@ -98,6 +98,7 @@ const getAuthHeader = () => {
  * @param {string} params.customerName - Customer name
  * @returns {Promise<Object>} PayMongo source object
  */
+// eslint-disable-next-line no-unused-vars
 export const processGCashPayment = async ({ amount, orderId, customerEmail, customerName }) => {
   try {
     const response = await fetch(`${PAYMONGO_API_URL}/sources`, {
@@ -273,6 +274,7 @@ export const processCardPayment = async ({ amount, orderId }) => {
  * @param {string} params.customerName - Customer name
  * @returns {Promise<Object>} PayMongo source object with redirect URL
  */
+// eslint-disable-next-line no-unused-vars
 export const processGrabPayPayment = async ({ amount, orderId, customerEmail, customerName }) => {
   try {
     const response = await fetch(`${PAYMONGO_API_URL}/sources`, {
