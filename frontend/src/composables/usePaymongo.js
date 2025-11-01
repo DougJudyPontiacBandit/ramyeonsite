@@ -152,6 +152,7 @@ export const processGCashPayment = async ({ amount, orderId, customerEmail, cust
  * @param {string} params.customerName - Customer name
  * @returns {Promise<Object>} PayMongo source object
  */
+// eslint-disable-next-line no-unused-vars
 export const processPayMayaPayment = async ({ amount, orderId, customerEmail, customerName }) => {
   try {
     const response = await fetch(`${PAYMONGO_API_URL}/sources`, {
