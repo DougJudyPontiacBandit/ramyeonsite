@@ -18,16 +18,15 @@ class CreateOnlineOrderView(APIView):
         try:
             service = OnlineTransactionService()
 
-            customer_id = request.data.get('customer_id')
-            # Fallback to token user id if not provided
-            if not customer_id:
-                user_ctx = getattr(request, 'current_user', None) or {}
-                customer_id = user_ctx.get('user_id')
+            # ALWAYS use customer_id from JWT token for consistency
+            # This ensures orders can be retrieved properly
+            user_ctx = getattr(request, 'current_user', None) or {}
+            customer_id = user_ctx.get('user_id')
 
             if not customer_id:
                 return Response({
                     'success': False,
-                    'message': 'Customer ID is required'
+                    'message': 'Customer ID is required. Please log in.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             order_data = {
@@ -39,7 +38,10 @@ class CreateOnlineOrderView(APIView):
                 'notes': request.data.get('notes') or request.data.get('special_instructions', ''),
             }
 
+            logger.info(f"📦 Creating order for customer_id: {customer_id}")
             result = service.create_online_order(order_data, customer_id)
+            order_id = result['data']['order_id']
+            logger.info(f"✅ Order created successfully: {order_id} for customer_id: {customer_id}")
 
             return Response({
                 'success': True,
@@ -65,10 +67,13 @@ class CustomerOrderHistoryView(APIView):
             user_ctx = getattr(request, 'current_user', None) or {}
             customer_id = user_ctx.get('user_id')
 
+            logger.info(f"📦 Fetching order history for customer_id: {customer_id}")
+
             if not customer_id:
+                logger.error("❌ No customer_id found in JWT token")
                 return Response({
                     'success': False,
-                    'message': 'Customer ID is required'
+                    'message': 'Customer ID is required. Please log in.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Get pagination parameters
@@ -101,6 +106,17 @@ class CustomerOrderHistoryView(APIView):
                 from .order_status_views import get_status_display_info
                 status_info = get_status_display_info(current_status)
                 
+                # Format status history
+                status_history = order.get('status_history', [])
+                formatted_history = []
+                for entry in status_history:
+                    formatted_history.append({
+                        'status': entry.get('status'),
+                        'timestamp': entry.get('timestamp').isoformat() if entry.get('timestamp') else None,
+                        'notes': entry.get('notes', ''),
+                        'updated_by': entry.get('updated_by', '')
+                    })
+                
                 # Convert MongoDB document to JSON-serializable dict
                 order_dict = {
                     'order_id': str(order.get('_id')),
@@ -123,6 +139,7 @@ class CustomerOrderHistoryView(APIView):
                     'order_status': current_status,
                     'status': current_status,
                     'status_info': status_info,  # Add status display info
+                    'status_history': formatted_history,  # Add formatted status history
                     'notes': order.get('notes', ''),
                     'loyalty_points_earned': int(order.get('loyalty_points_earned', 0)),
                     'created_at': order.get('created_at').isoformat() if order.get('created_at') else None,
@@ -134,7 +151,12 @@ class CustomerOrderHistoryView(APIView):
             # Get total count for pagination info
             total_count = online_transactions.count_documents({'customer_id': customer_id})
 
-            logger.info(f"Fetched {len(orders)} orders for customer {customer_id} (total: {total_count})")
+            logger.info(f"✅ Fetched {len(orders)} orders for customer_id: {customer_id} (total in DB: {total_count})")
+            
+            # Debug: Log order IDs for verification
+            if len(orders) > 0:
+                order_ids = [o['order_id'] for o in orders[:5]]  # First 5 order IDs
+                logger.info(f"📋 Recent order IDs: {order_ids}")
 
             return Response({
                 'success': True,
