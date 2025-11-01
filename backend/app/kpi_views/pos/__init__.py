@@ -1,1 +1,0 @@
-# POS views module

@@ -7,7 +7,6 @@ from bson import ObjectId
 from datetime import datetime
 import logging
 from django.utils.dateparse import parse_date
-from ..decorators.authenticationDecorator import require_authentication
 
 logger = logging.getLogger(__name__)
 
@@ -79,44 +78,6 @@ class SalesLogView(APIView):
                 {'error': f'Failed to create invoice: {str(e)}'}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-class MyInvoicesView(APIView):
-    """Return invoices for the current authenticated user/customer"""
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.sales_service = SalesLogService()
-
-    @require_authentication
-    def get(self, request):
-        try:
-            current_user = request.current_user or {}
-            user_id = current_user.get('user_id')
-            if not user_id:
-                return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
-
-            db = self.sales_service.db
-            collection = db.sales_log
-
-            query = {
-                "$or": [
-                    {"user_id": user_id},
-                    {"customer_id": user_id}
-                ]
-            }
-
-            invoices = list(collection.find(query).sort("transaction_date", -1).limit(50))
-
-            # Convert types for JSON
-            for inv in invoices:
-                self.sales_service.convert_object_id(inv)
-
-            return Response({
-                "success": True,
-                "invoices": invoices
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.error(f"MyInvoicesView error: {e}")
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request, invoice_id=None):
         """Get invoice(s) - single invoice by ID or all invoices"""

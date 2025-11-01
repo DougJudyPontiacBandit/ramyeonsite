@@ -8,12 +8,23 @@ import apiClient from './api.js';
 export const loyaltyAPI = {
   /**
    * Get customer loyalty points balance
-   * @param {string} customerId - Customer ID
+   * Note: customerId is not needed as it's retrieved from JWT token
    * @returns {Promise<Object>} Customer points data
    */
-  getBalance: async (customerId) => {
+  getBalance: async () => {
     try {
-      const response = await apiClient.get(`/customer/loyalty/balance/${customerId}`);
+      // Check if user is authenticated before making the request
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('ℹ️ Loyalty balance API unavailable, using fallback');
+        return {
+          success: true,
+          data: { balance: 0 },
+          fallback: true
+        };
+      }
+      
+      const response = await apiClient.get('/customer/loyalty/balance/');
       return {
         success: true,
         data: response.data
@@ -29,15 +40,25 @@ export const loyaltyAPI = {
 
   /**
    * Get customer loyalty points history
-   * @param {string} customerId - Customer ID
-   * @param {number} page - Page number (default: 1)
-   * @param {number} limit - Items per page (default: 20)
+   * Note: customerId is not needed as it's retrieved from JWT token
+   * @param {number} limit - Items per page (default: 50)
    * @returns {Promise<Object>} Points transaction history
    */
-  getHistory: async (customerId, page = 1, limit = 20) => {
+  getHistory: async (limit = 50) => {
     try {
-      const response = await apiClient.get(`/customer/loyalty/history/${customerId}`, {
-        params: { page, limit }
+      // Check if user is authenticated before making the request
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('ℹ️ Loyalty history API unavailable, using fallback');
+        return {
+          success: true,
+          data: { history: [], results: [] },
+          fallback: true
+        };
+      }
+      
+      const response = await apiClient.get('/customer/loyalty/history/', {
+        params: { limit }
       });
       return {
         success: true,
@@ -54,17 +75,14 @@ export const loyaltyAPI = {
 
   /**
    * Validate points redemption
-   * @param {string} customerId - Customer ID
+   * Note: customerId is retrieved from JWT token, orderSubtotal not used in backend validation
    * @param {number} pointsToRedeem - Points to redeem
-   * @param {number} orderSubtotal - Order subtotal
    * @returns {Promise<Object>} Validation result
    */
-  validateRedemption: async (customerId, pointsToRedeem, orderSubtotal) => {
+  validateRedemption: async (pointsToRedeem) => {
     try {
-      const response = await apiClient.post('/customer/loyalty/validate-redemption', {
-        customer_id: customerId,
-        points_to_redeem: pointsToRedeem,
-        order_subtotal: orderSubtotal
+      const response = await apiClient.post('/customer/loyalty/validate-redemption/', {
+        points_to_redeem: pointsToRedeem
       });
       return {
         success: true,
@@ -100,23 +118,19 @@ export const loyaltyAPI = {
 
   /**
    * Get points expiration info
-   * @param {string} customerId - Customer ID
+   * Note: This endpoint is not implemented in the unified backend yet
    * @returns {Promise<Object>} Points expiration data
    */
-  getExpirationInfo: async (customerId) => {
-    try {
-      const response = await apiClient.get(`/customer/loyalty/expiration/${customerId}`);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error) {
-      console.error('Error fetching points expiration:', error);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.message || 'Failed to fetch points expiration'
-      };
-    }
+  getExpirationInfo: async () => {
+    // This endpoint doesn't exist in the unified backend yet
+    // Return a placeholder response for now
+    return {
+      success: true,
+      data: {
+        message: 'Points expiration feature not implemented yet',
+        expiration_date: null
+      }
+    };
   },
 
   /**
@@ -170,12 +184,84 @@ export const loyaltyAPI = {
   },
 
   /**
+   * Get loyalty tiers
+   * @returns {Promise<Object>} Loyalty tiers
+   */
+  getTiers: async () => {
+    try {
+      const response = await apiClient.get('/customer/loyalty/tiers/');
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error fetching loyalty tiers:', error);
+      // Return default tiers if backend is unavailable
+      return {
+        success: true,
+        data: {
+          tiers: [
+            { name: 'Bronze', min_points: 0, max_points: 499, multiplier: 1.0 },
+            { name: 'Silver', min_points: 500, max_points: 1499, multiplier: 1.25 },
+            { name: 'Gold', min_points: 1500, max_points: 2999, multiplier: 1.5 },
+            { name: 'Platinum', min_points: 3000, max_points: null, multiplier: 2.0 }
+          ]
+        }
+      };
+    }
+  },
+
+  /**
+   * Get current loyalty tier for customer
+   * Note: customerId is retrieved from JWT token
+   * @returns {Promise<Object>} Current tier
+   */
+  getCurrentTier: async () => {
+    try {
+      // Check if user is authenticated before making the request
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.log('ℹ️ Loyalty tier API unavailable, using fallback');
+        return {
+          success: true,
+          data: {
+            name: 'Bronze',
+            min_points: 0,
+            max_points: 499,
+            multiplier: 1.0
+          },
+          fallback: true
+        };
+      }
+      
+      const response = await apiClient.get('/customer/loyalty/current-tier/');
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error fetching current tier:', error);
+      // Return default Bronze tier if backend is unavailable
+      return {
+        success: true,
+        data: {
+          name: 'Bronze',
+          min_points: 0,
+          max_points: 499,
+          multiplier: 1.0
+        },
+        fallback: true
+      };
+    }
+  },
+
+  /**
    * Health check for loyalty service
    * @returns {Promise<Object>} Service health status
    */
   healthCheck: async () => {
     try {
-      const response = await apiClient.get('/customer/loyalty/health');
+      const response = await apiClient.get('/customer/loyalty/health/');
       return {
         success: true,
         data: response.data

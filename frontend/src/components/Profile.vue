@@ -195,6 +195,9 @@ export default {
       console.log('🔄 Profile loyalty points changed:', { old: oldPoints, new: newPoints });
       // Force update when points change
       this.$forceUpdate();
+    },
+    '$root.isDarkMode'(newVal) {
+      this.isDarkMode = newVal;
     }
   },
   methods: {
@@ -415,13 +418,6 @@ export default {
           }, 300);
         }
       }, 3000);
-    }
-  },
-
-  // Watch for dark mode changes from settings
-  watch: {
-    '$root.isDarkMode'(newVal) {
-      this.isDarkMode = newVal;
     }
   }
 }

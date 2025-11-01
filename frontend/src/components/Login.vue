@@ -221,8 +221,8 @@ export default {
         );
         
         // Create user session from API response
-        // Backend returns: { token, customer, message }
-        const customer = response.customer;
+        // Backend returns: { access_token, user, ... } or legacy { customer }
+        const customer = response.customer || response.user || {};
         const userSession = {
           id: customer._id || customer.id,
           email: customer.email,
