@@ -88,12 +88,16 @@ export default {
     refreshInterval: {
       type: Number,
       default: 30000 // 30 seconds
+    },
+    initialStatusHistory: {
+      type: Array,
+      default: () => []
     }
   },
   data() {
     return {
       status: this.currentStatus,
-      statusHistory: [],
+      statusHistory: this.initialStatusHistory || [],
       isRefreshing: false,
       refreshTimer: null,
       isMounted: false
@@ -109,6 +113,12 @@ export default {
     currentStatus(newStatus) {
       if (newStatus && newStatus !== this.status) {
         this.status = newStatus;
+      }
+    },
+    // Watch for status history prop changes
+    initialStatusHistory(newHistory) {
+      if (newHistory && newHistory.length > 0) {
+        this.statusHistory = newHistory;
       }
     },
     // Watch autoRefresh prop changes
@@ -142,6 +152,9 @@ export default {
   },
   methods: {
     getStatusInfo(statusCode) {
+      // Normalize status code for alternative names
+      const normalizedStatus = this.normalizeStatusCode(statusCode);
+      
       const statusMap = {
         'pending': {
           label: 'Order Pending',
@@ -164,6 +177,13 @@ export default {
           color: 'blue',
           progress: 40
         },
+        'processing': {
+          label: 'Processing Order',
+          description: 'We are processing and preparing your order',
+          icon: '⚙️',
+          color: 'blue',
+          progress: 40
+        },
         'cooking': {
           label: 'Cooking',
           description: 'Your food is being prepared in our kitchen',
@@ -180,6 +200,13 @@ export default {
         },
         'out_for_delivery': {
           label: 'Out for Delivery',
+          description: 'Your order is on the way to you',
+          icon: '🚚',
+          color: 'blue',
+          progress: 90
+        },
+        'on_the_way': {
+          label: 'On the Way',
           description: 'Your order is on the way to you',
           icon: '🚚',
           color: 'blue',
@@ -208,13 +235,24 @@ export default {
         }
       };
 
-      return statusMap[statusCode] || {
+      return statusMap[normalizedStatus] || {
         label: 'Unknown Status',
         description: 'Status information not available',
         icon: '❓',
         color: 'gray',
         progress: 0
       };
+    },
+
+    normalizeStatusCode(statusCode) {
+      // Handle alternative status names
+      const aliasMap = {
+        'processing': 'processing',
+        'on_the_way': 'on_the_way',
+        'out_for_delivery': 'on_the_way',
+      };
+      
+      return aliasMap[statusCode] || statusCode;
     },
 
     getStatusLabel(statusCode) {

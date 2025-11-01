@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History API Tester</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .test-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .success {
+            border-left: 4px solid #28a745;
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .error {
+            border-left: 4px solid #dc3545;
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .warning {
+            border-left: 4px solid #ffc107;
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .info {
+            border-left: 4px solid #17a2b8;
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            margin: 5px 5px 5px 0;
+        }
+        
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .badge-error {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .badge-warning {
+            background: #ffc107;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Order History API Tester</h1>
+        <p class="subtitle">Diagnose why orders aren't showing in Order History</p>
+        
+        <!-- Test 1: Check Token -->
+        <div class="test-section">
+            <h2>Step 1: Check Authentication Token</h2>
+            <button onclick="checkToken()">Check Token</button>
+            <div id="token-result" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- Test 2: Check Backend -->
+        <div class="test-section">
+            <h2>Step 2: Check Backend Status</h2>
+            <button onclick="checkBackend()">Test Backend</button>
+            <div id="backend-result" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- Test 3: Check Profile -->
+        <div class="test-section">
+            <h2>Step 3: Get Your Customer Profile</h2>
+            <button onclick="checkProfile()">Get Profile</button>
+            <div id="profile-result" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- Test 4: Fetch Orders -->
+        <div class="test-section">
+            <h2>Step 4: Fetch Orders from Database</h2>
+            <button onclick="fetchOrders()">Fetch Orders</button>
+            <div id="orders-result" class="result" style="display: none;"></div>
+        </div>
+        
+        <!-- Test 5: Summary -->
+        <div class="test-section">
+            <h2>📊 Test Summary</h2>
+            <button onclick="runAllTests()">Run All Tests</button>
+            <div id="summary-result" class="result" style="display: none;"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'https://pann-pos.onrender.com/api/v1';
+        
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+        
+        async function checkToken() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                showResult('token-result', 
+                    '❌ NO TOKEN FOUND\n\n' +
+                    'You are not logged in!\n\n' +
+                    'Solution: Log in to your account first.',
+                    'error'
+                );
+                return false;
+            }
+            
+            try {
+                // Try to decode JWT (basic decode without verification)
+                const parts = token.split('.');
+                const payload = JSON.parse(atob(parts[1]));
+                
+                const now = Date.now() / 1000;
+                const expired = payload.exp && payload.exp < now;
+                
+                let result = '✅ TOKEN FOUND\n\n';
+                result += `User ID: ${payload.user_id || 'NOT FOUND'}\n`;
+                result += `Email: ${payload.email || 'NOT FOUND'}\n`;
+                result += `Role: ${payload.role || 'NOT FOUND'}\n`;
+                result += `Expires: ${new Date(payload.exp * 1000).toLocaleString()}\n`;
+                result += `\nStatus: ${expired ? '❌ EXPIRED' : '✅ VALID'}\n`;
+                
+                if (expired) {
+                    result += '\n⚠️ Token is expired! Log in again.';
+                }
+                
+                showResult('token-result', result, expired ? 'warning' : 'success');
+                return !expired;
+            } catch (e) {
+                showResult('token-result', 
+                    '❌ INVALID TOKEN\n\n' +
+                    'Token format is invalid.\n\n' +
+                    'Solution: Log out and log in again.',
+                    'error'
+                );
+                return false;
+            }
+        }
+        
+        async function checkBackend() {
+            try {
+                const response = await fetch(`${API_BASE}/health/`);
+                const data = await response.json();
+                
+                showResult('backend-result', 
+                    '✅ BACKEND IS RUNNING\n\n' +
+                    JSON.stringify(data, null, 2),
+                    'success'
+                );
+                return true;
+            } catch (e) {
+                showResult('backend-result', 
+                    '❌ BACKEND IS DOWN\n\n' +
+                    `Error: ${e.message}\n\n` +
+                    'Solution: Make sure the backend server is running.',
+                    'error'
+                );
+                return false;
+            }
+        }
+        
+        async function checkProfile() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                showResult('profile-result', 
+                    '❌ No token found. Run Step 1 first.',
+                    'error'
+                );
+                return false;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/customer/me/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                let result = '✅ PROFILE LOADED\n\n';
+                result += `Customer ID: ${data.customer?.customer_id || data.id || 'NOT FOUND'}\n`;
+                result += `Email: ${data.customer?.email || data.email || 'NOT FOUND'}\n`;
+                result += `Name: ${data.customer?.full_name || data.full_name || 'NOT FOUND'}\n`;
+                result += `Loyalty Points: ${data.customer?.loyalty_points || data.loyalty_points || 0}\n`;
+                result += '\nFull Response:\n';
+                result += JSON.stringify(data, null, 2);
+                
+                showResult('profile-result', result, 'success');
+                return true;
+            } catch (e) {
+                let errorMsg = '❌ PROFILE ERROR\n\n';
+                errorMsg += `Error: ${e.message}\n\n`;
+                
+                if (e.message.includes('401')) {
+                    errorMsg += '🔐 Authentication failed! Token may be expired.\n';
+                    errorMsg += 'Solution: Log out and log in again.';
+                } else if (e.message.includes('404')) {
+                    errorMsg += '🔍 Endpoint not found.\n';
+                    errorMsg += 'Solution: Check backend URL configuration.';
+                }
+                
+                showResult('profile-result', errorMsg, 'error');
+                return false;
+            }
+        }
+        
+        async function fetchOrders() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                showResult('orders-result', 
+                    '❌ No token found. Run Step 1 first.',
+                    'error'
+                );
+                return false;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/online/orders/history/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                let result = '✅ ORDERS FETCHED SUCCESSFULLY\n\n';
+                result += `Total Orders: ${data.total || 0}\n`;
+                result += `Returned: ${data.count || 0}\n\n`;
+                
+                if (data.results && data.results.length > 0) {
+                    result += 'Recent Orders:\n';
+                    data.results.slice(0, 5).forEach((order, i) => {
+                        result += `\n${i + 1}. Order ID: ${order.order_id}\n`;
+                        result += `   Status: ${order.order_status || order.status}\n`;
+                        result += `   Date: ${order.created_at}\n`;
+                        result += `   Total: ₱${order.total_amount}\n`;
+                        result += `   Customer ID: ${order.customer_id}\n`;
+                    });
+                } else {
+                    result += '⚠️ No orders found in database.\n';
+                    result += '\nPossible reasons:\n';
+                    result += '1. Customer ID mismatch between JWT and orders\n';
+                    result += '2. Orders exist but for different customer\n';
+                    result += '3. No orders have been placed yet\n';
+                }
+                
+                result += '\n\nFull Response:\n';
+                result += JSON.stringify(data, null, 2);
+                
+                showResult('orders-result', result, data.total > 0 ? 'success' : 'warning');
+                return data.total > 0;
+            } catch (e) {
+                let errorMsg = '❌ ORDERS FETCH FAILED\n\n';
+                errorMsg += `Error: ${e.message}\n\n`;
+                
+                if (e.message.includes('404')) {
+                    errorMsg += '🔍 404 NOT FOUND\n\n';
+                    errorMsg += 'Possible causes:\n';
+                    errorMsg += '1. Backend endpoint not registered\n';
+                    errorMsg += '2. URL pattern mismatch\n';
+                    errorMsg += '3. Backend not running\n\n';
+                    errorMsg += 'Check backend logs for errors.';
+                } else if (e.message.includes('401')) {
+                    errorMsg += '🔐 401 UNAUTHORIZED\n\n';
+                    errorMsg += 'Token is invalid or expired.\n';
+                    errorMsg += 'Solution: Log out and log in again.';
+                } else if (e.message.includes('403')) {
+                    errorMsg += '🚫 403 FORBIDDEN\n\n';
+                    errorMsg += 'Access denied. Customer ID may not match.';
+                }
+                
+                showResult('orders-result', errorMsg, 'error');
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            showResult('summary-result', '⏳ Running all tests...', 'info');
+            
+            const results = {
+                token: await checkToken(),
+                backend: await checkBackend(),
+                profile: await checkProfile(),
+                orders: await fetchOrders()
+            };
+            
+            let summary = '📊 TEST RESULTS SUMMARY\n\n';
+            summary += `1. Token Status: ${results.token ? '✅ Valid' : '❌ Failed'}\n`;
+            summary += `2. Backend Status: ${results.backend ? '✅ Running' : '❌ Down'}\n`;
+            summary += `3. Profile Access: ${results.profile ? '✅ Success' : '❌ Failed'}\n`;
+            summary += `4. Orders Fetch: ${results.orders ? '✅ Success' : '❌ Failed'}\n`;
+            
+            const allPassed = Object.values(results).every(r => r);
+            
+            summary += '\n';
+            summary += allPassed 
+                ? '🎉 ALL TESTS PASSED!\n\nYour Order History should work now.'
+                : '⚠️ SOME TESTS FAILED\n\nCheck the individual test results above for solutions.';
+            
+            showResult('summary-result', summary, allPassed ? 'success' : 'error');
+        }
+    </script>
+</body>
+</html>
+

@@ -1254,6 +1254,12 @@ export default {
           }
           backendOrderIdFromCreate = (createRes && (createRes.data?.order_id || createRes.order_id)) || null;
           console.log('✅ Backend order created:', backendOrderIdFromCreate);
+          
+          // Use the backend order ID instead of temporary one
+          if (backendOrderIdFromCreate) {
+            orderId = backendOrderIdFromCreate;
+            console.log('🔄 Using backend order ID:', orderId);
+          }
         }
         
         // Order created successfully
@@ -1383,9 +1389,9 @@ export default {
           }
         }
         
-        // Create order data
+        // Create order data (using the backend order ID if available)
         const localOrderData = {
-          id: orderId,
+          id: orderId,  // This is now the backend order ID (ONLINE-XXXXX) for COD
           items: this.cartItems,
           deliveryType: this.deliveryType,
           deliveryAddress: this.deliveryAddress,
@@ -1403,7 +1409,7 @@ export default {
           status: paymentStatus === 'succeeded' ? 'confirmed' : 'pending',
           paymentReference: paymentReference,
           paymentStatus: paymentStatus,
-          backendOrderId: backendOrderIdFromCreate
+          backendOrderId: orderId  // Store the backend order ID
         };
         
         // Backend order was already created by createOrder(); skip duplicate calls
@@ -1429,15 +1435,16 @@ export default {
         // during order creation in OnlineTransactionService.create_online_order()
         // No need for a separate API call here
         
-        // Calculate points earned for display purposes (20% of subtotal after ALL discounts)
-        // Customers should only earn points on the amount they actually pay
-        const subtotalAfterDiscount = this.subtotal - (this.pointsDiscount || 0) - (this.promotionDiscount || 0);
-        const pointsEarned = Math.floor(Math.max(0, subtotalAfterDiscount) * 0.20);
+        // Calculate points earned for display purposes
+        // Rule: 0.20 points per ₱1 in ORIGINAL subtotal
+        // Rule: If customer uses loyalty points, they earn ZERO points
+        const pointsEarned = this.useLoyaltyPoints && this.pointsToRedeem > 0 
+          ? 0 
+          : Math.floor(Math.max(0, this.subtotal) * 0.20);
         console.log('💎 Points earned calculation:', {
           subtotal: this.subtotal,
-          pointsDiscount: this.pointsDiscount,
-          promotionDiscount: this.promotionDiscount,
-          subtotalAfterDiscount: subtotalAfterDiscount,
+          usedLoyaltyPoints: this.useLoyaltyPoints,
+          pointsToRedeem: this.pointsToRedeem,
           pointsEarned: pointsEarned
         })
         
@@ -1452,9 +1459,9 @@ export default {
           }
         }
         
-        // Show confirmation modal
+        // Show confirmation modal with the correct backend order ID
         this.confirmedOrder = {
-          id: localOrderData.backendOrderId || localOrderData.id,
+          id: orderId,  // This is now the backend order ID (ONLINE-XXXXX)
           total: this.finalTotal.toFixed(2),
           paymentMethod: this.paymentMethod,
           deliveryType: this.deliveryType,
@@ -1610,17 +1617,19 @@ export default {
               this.loadUserProfile().then(async () => {
                 if (CART_DEBUG) console.log('[Cart] User profile loaded');
                 
-                // Award points for successful payment (20% of subtotal after ALL discounts)
-                // Customers should only earn points on the amount they actually pay
+                // Award points for successful payment
+                // Rule: 0.20 points per ₱1 in ORIGINAL subtotal
+                // Rule: If customer uses loyalty points, they earn ZERO points
                 if (this.userProfile && this.userProfile.id !== 'guest') {
-                  const subtotalAfterDiscount = orderData.subtotal - (orderData.pointsDiscount || 0) - (orderData.promotionDiscount || 0);
-                  const pointsEarned = Math.floor(Math.max(0, subtotalAfterDiscount) * 0.20);
+                  const pointsEarned = (orderData.pointsDiscount > 0 || orderData.pointsToRedeem > 0)
+                    ? 0 
+                    : Math.floor(Math.max(0, orderData.subtotal) * 0.20);
                   
-                  if (subtotalAfterDiscount > 0) {
+                  if (pointsEarned > 0) {
                     try {
-                      if (CART_DEBUG) console.log('[Cart] Awarding loyalty points for amount:', subtotalAfterDiscount, '(~', pointsEarned, 'points)');
+                      if (CART_DEBUG) console.log('[Cart] Awarding loyalty points for amount:', orderData.subtotal, '(~', pointsEarned, 'points)');
                       // Pass the order amount, backend will calculate points
-                      const awardResult = await this.awardPoints(subtotalAfterDiscount, this.userProfile.id, {
+                      const awardResult = await this.awardPoints(orderData.subtotal, this.userProfile.id, {
                         order_id: orderId,
                         description: `Points earned from order #${orderId} (payment return)`
                       });
@@ -1642,9 +1651,15 @@ export default {
                 
                 // Send to backend only if it wasn't already created pre-redirect
                 // Orders are now permanently stored in database via backend API
+                let finalOrderId = orderData.id;
                 if (!orderData.backendOrderId) {
                   if (CART_DEBUG) console.log('[Cart] Sending order to backend for permanent storage');
-                  this.sendOrderToBackend(orderData);
+                  const backendOrderId = await this.sendOrderToBackend(orderData);
+                  if (backendOrderId) {
+                    finalOrderId = backendOrderId;
+                    orderData.id = backendOrderId;
+                    if (CART_DEBUG) console.log('[Cart] Updated order ID to backend ID:', finalOrderId);
+                  }
                 } else {
                   if (CART_DEBUG) console.log('[Cart] Order already in database (backendOrderId exists)');
                 }
@@ -1657,9 +1672,12 @@ export default {
                 await this.clearCart();
                 this.$forceUpdate();
                 
-                // Calculate points earned for display (after ALL discounts)
-                const subtotalAfterDiscount = orderData.subtotal - (orderData.pointsDiscount || 0) - (orderData.promotionDiscount || 0);
-                const pointsEarned = Math.floor(Math.max(0, subtotalAfterDiscount) * 0.20);
+                // Calculate points earned for display
+                // Rule: 0.20 points per ₱1 in ORIGINAL subtotal
+                // Rule: If customer uses loyalty points, they earn ZERO points
+                const pointsEarned = (orderData.pointsDiscount > 0 || orderData.pointsToRedeem > 0)
+                  ? 0 
+                  : Math.floor(Math.max(0, orderData.subtotal) * 0.20);
                 
                 // Refresh user profile to show updated points
                 try {
@@ -1670,9 +1688,9 @@ export default {
                   console.error('❌ Error refreshing user profile after payment:', error);
                 }
                 
-                // Show confirmation
+                // Show confirmation with the final order ID
                 this.confirmedOrder = {
-                  id: orderData.id,
+                  id: finalOrderId,  // Use the backend order ID
                   total: orderData.total.toFixed(2),
                   paymentMethod: orderData.paymentMethod,
                   deliveryType: orderData.deliveryType,
@@ -1763,9 +1781,18 @@ export default {
         });
         
         console.log('✅ Order sent to backend successfully:', response);
+        
+        // Extract and return the backend order ID
+        const backendOrderId = response?.data?.order_id || response?.order_id;
+        if (backendOrderId) {
+          console.log('🔄 Backend returned order ID:', backendOrderId);
+          return backendOrderId;
+        }
+        return null;
       } catch (error) {
         console.warn('⚠️ Failed to send order to backend (this is OK, order saved locally):', error.message);
         // Don't throw - order is already saved locally, backend is optional
+        return null;
       }
     },
     

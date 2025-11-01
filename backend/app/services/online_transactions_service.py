@@ -56,9 +56,12 @@ class OnlineTransactionService:
         discount = round(pts / 4.0, 2)  # 4 points = ₱1
         return float(min(discount, subtotal)), pts
 
-    def _compute_points_earned(self, subtotal_after_discount: float) -> int:
-        # Earn rate: 20% of order value (matches existing UI assumptions)
-        return int(round(subtotal_after_discount * 0.20))
+    def _compute_points_earned(self, subtotal: float, points_used: int) -> int:
+        # Earn rate: 0.20 points per ₱1 in subtotal
+        # If customer used loyalty points, they earn ZERO points
+        if points_used > 0:
+            return 0
+        return int(round(subtotal * 0.20))
 
     # ------------------------- Public API -------------------------
     def create_online_order(self, order_data: dict, customer_id: str):
@@ -130,7 +133,7 @@ class OnlineTransactionService:
             'status_history': [
                 {'status': 'pending', 'timestamp': now_utc}
             ],
-            'loyalty_points_earned': self._compute_points_earned(subtotal_after_discount),
+            'loyalty_points_earned': self._compute_points_earned(subtotal, pts_used),
             'created_at': now_utc,
             'updated_at': now_utc,
         }
@@ -161,6 +164,7 @@ class OnlineTransactionService:
                 logger.error(f"Failed to deduct loyalty points for order {order_id}: {e}")
 
         # Award loyalty points earned from this purchase
+        # Note: points_earned will be 0 if customer used loyalty points
         points_earned = order_record.get('loyalty_points_earned', 0)
         if points_earned > 0 and customer:
             try:

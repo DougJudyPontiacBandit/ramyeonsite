@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order History Debug</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        .section { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Order History Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Step 1: Check Authentication</h2>
+        <button onclick="checkAuth()">Check Login Status</button>
+        <div id="authResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Fetch Orders from Database</h2>
+        <button onclick="fetchOrders()">Fetch Database Orders</button>
+        <div id="ordersResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Check Customer Profile</h2>
+        <button onclick="fetchProfile()">Fetch Profile & Points</button>
+        <div id="profileResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: Clear Old Data</h2>
+        <button onclick="clearOldData()">Clear localStorage Orders</button>
+        <div id="clearResult"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://pann-pos.onrender.com/api/v1';
+
+        function getToken() {
+            return localStorage.getItem('access_token');
+        }
+
+        async function checkAuth() {
+            const result = document.getElementById('authResult');
+            const token = getToken();
+            
+            if (!token) {
+                result.innerHTML = '<p class="error">❌ No access token found. Please login first!</p>';
+                return;
+            }
+
+            result.innerHTML = '<p class="success">✅ Access token exists</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/customer/me/`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML += `
+                        <p class="success">✅ Successfully authenticated</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    result.innerHTML += `<p class="error">❌ Authentication failed: ${data.message || data.error}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML += `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchOrders() {
+            const result = document.getElementById('ordersResult');
+            const token = getToken();
+            
+            if (!token) {
+                result.innerHTML = '<p class="error">❌ Please check authentication first</p>';
+                return;
+            }
+
+            result.innerHTML = '<p>⏳ Fetching orders...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/online/orders/history/`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    result.innerHTML = `
+                        <p class="success">✅ Found ${data.count} orders in database</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    
+                    if (data.results && data.results.length > 0) {
+                        const latestOrder = data.results[0];
+                        result.innerHTML += `
+                            <h3>Latest Order:</h3>
+                            <ul>
+                                <li><strong>Order ID:</strong> ${latestOrder.order_id}</li>
+                                <li><strong>Status:</strong> ${latestOrder.order_status}</li>
+                                <li><strong>Total:</strong> ₱${latestOrder.total_amount}</li>
+                                <li><strong>Points Earned:</strong> ${latestOrder.loyalty_points_earned || 0}</li>
+                                <li><strong>Created:</strong> ${latestOrder.created_at}</li>
+                            </ul>
+                        `;
+                    }
+                } else {
+                    result.innerHTML = `<p class="error">❌ Failed to fetch orders: ${data.message}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        async function fetchProfile() {
+            const result = document.getElementById('profileResult');
+            const token = getToken();
+            
+            if (!token) {
+                result.innerHTML = '<p class="error">❌ Please check authentication first</p>';
+                return;
+            }
+
+            result.innerHTML = '<p>⏳ Fetching profile...</p>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/customer/me/`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <p class="success">✅ Profile loaded</p>
+                        <ul>
+                            <li><strong>Customer ID:</strong> ${data.id}</li>
+                            <li><strong>Email:</strong> ${data.email}</li>
+                            <li><strong>Name:</strong> ${data.full_name || data.username}</li>
+                            <li><strong>Loyalty Points:</strong> ${data.loyalty_points || 0}</li>
+                        </ul>
+                        <h3>Full Profile:</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    result.innerHTML = `<p class="error">❌ Failed to fetch profile: ${data.message}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+
+        function clearOldData() {
+            const result = document.getElementById('clearResult');
+            
+            // Clear old localStorage orders
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('ramyeon_orders') || key === 'ramyeon_pending_order')) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            result.innerHTML = `
+                <p class="success">✅ Cleared ${keysToRemove.length} localStorage items:</p>
+                <ul>${keysToRemove.map(k => `<li>${k}</li>`).join('')}</ul>
+                <p class="warning">⚠️ Please refresh the Order History page now</p>
+            `;
+        }
+    </script>
+
+    <div class="section">
+        <h2>Quick Actions</h2>
+        <button onclick="location.reload()">🔄 Refresh Page</button>
+        <button onclick="window.close()">❌ Close</button>
+    </div>
+</body>
+</html>
+
+
