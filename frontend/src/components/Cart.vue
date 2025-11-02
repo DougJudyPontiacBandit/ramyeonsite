@@ -1218,7 +1218,7 @@ export default {
         let paymentStatus = 'pending';
         
         // Generate order ID
-        const orderId = 'ORDER-' + Date.now();
+        let orderId = 'ORDER-' + Date.now();
         
         // Track payment attempt
         this.trackPaymentAttempt(orderId, 'initiated');
