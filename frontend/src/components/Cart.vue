@@ -1874,20 +1874,7 @@ export default {
         console.error('❌ Error Message:', error.message || 'No error message available');
         console.error('❌ Full Error Object:', JSON.stringify(error, null, 2));
         
-        // For debugging: Use a test profile with some points
-        this.userProfile = {
-          id: 'test-user',
-          email: 'test@ramyeon.com',
-          full_name: 'Test User',
-          loyalty_points: 50 // Give test user some points for debugging
-        };
-        
-        // Sync loyalty balance with test profile points
-        if (this.setLoyaltyBalance) {
-          this.setLoyaltyBalance(this.userProfile.loyalty_points);
-        }
-        
-        console.log('🧪 Using test profile with points for debugging:', this.userProfile.loyalty_points);
+        // Don't set test profile - let it fail gracefully
         console.log('💡 To fix: Make sure you are logged in and backend is running');
         console.log('💡 Check backend logs for detailed error information');
       }
