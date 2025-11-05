@@ -279,9 +279,10 @@ export default {
         console.error('❌ Profile fetch error:', e);
         console.log('💡 To fix: Make sure you are logged in and backend is running');
         
-        // For debugging: Set some test points
-        this.user.loyalty_points = 50;
-        console.log('🧪 Using test points for debugging:', this.user.loyalty_points);
+        // Don't set test points - keep existing value or 0
+        if (!this.user.loyalty_points) {
+          this.user.loyalty_points = 0;
+        }
       }
     },
 
