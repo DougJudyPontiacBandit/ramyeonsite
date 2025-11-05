@@ -76,6 +76,7 @@ export function useLoyalty() {
    * @param {Object} filters - Filter options
    * @returns {Promise<Object>} History result
    */
+  // eslint-disable-next-line no-unused-vars
   const getLoyaltyHistory = async (filters = {}) => {
     try {
       isLoading.value = true

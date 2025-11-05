@@ -1,5 +1,11 @@
 <template>
   <div class="order-status-tracker">
+    <!-- Order ID Display (NEW) -->
+    <div v-if="orderId" class="order-id-display">
+      <span class="order-id-label">Order ID:</span>
+      <span class="order-id-value">{{ orderId }}</span>
+    </div>
+
     <!-- Current Status Badge -->
     <div class="current-status" :class="`status-${statusInfo.color}`">
       <span class="status-icon">{{ statusInfo.icon }}</span>
@@ -349,6 +355,30 @@ export default {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Order ID Display */
+.order-id-display {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-left: 4px solid #ef4444;
+  border-radius: 6px;
+}
+
+.order-id-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.order-id-value {
+  font-size: 16px;
+  color: #ef4444;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
 }
 
 /* Current Status Badge */

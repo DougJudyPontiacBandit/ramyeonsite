@@ -1,9 +1,14 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from ..services.customer_service import CustomerService
 from ..services.auth_services import AuthService
+from ..services.session_services import SessionLogService
 from ..decorators.authenticationDecorator import require_admin, require_authentication, get_authenticated_user_from_jwt
+from django.conf import settings
+from datetime import datetime, timedelta
+import jwt
 import logging
 
 logger = logging.getLogger(__name__)
@@ -628,3 +633,91 @@ class CustomerLoyaltyCurrentTierView(APIView):
                 {"error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+# ========== CUSTOMER REGISTRATION ==========
+
+class CustomerRegisterView(APIView):
+    """Customer registration endpoint"""
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        try:
+            # Extract registration data
+            customer_data = {
+                'email': request.data.get('email', '').strip().lower(),
+                'password': request.data.get('password', ''),
+                'username': request.data.get('username', '').strip(),
+                'full_name': request.data.get('full_name', '').strip(),
+                'phone': request.data.get('phone', '').strip(),
+                'delivery_address': request.data.get('delivery_address', {})
+            }
+            
+            # Validate required fields
+            required_fields = ['email', 'password', 'username', 'full_name']
+            for field in required_fields:
+                if not customer_data.get(field):
+                    return Response({
+                        'success': False,
+                        'error': f'{field.replace("_", " ").title()} is required'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Validate password strength
+            if len(customer_data['password']) < 6:
+                return Response({
+                    'success': False,
+                    'error': 'Password must be at least 6 characters long'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Create customer using CustomerService
+            customer_service = CustomerService()
+            customer = customer_service.create_customer(customer_data)
+            
+            # Generate JWT token
+            token_payload = {
+                'customer_id': customer['_id'],
+                'email': customer['email'],
+                'username': customer['username'],
+                'exp': datetime.utcnow() + timedelta(days=7)
+            }
+            
+            token = jwt.encode(token_payload, settings.SECRET_KEY, algorithm='HS256')
+            
+            # Create session
+            session_service = SessionLogService()
+            session_data = {
+                'user_id': customer['_id'],
+                'username': customer['username'],
+                'email': customer['email'],
+                'ip_address': request.META.get('REMOTE_ADDR'),
+                'user_agent': request.META.get('HTTP_USER_AGENT')
+            }
+            session = session_service.log_login(session_data)
+            
+            # Return success response
+            return Response({
+                'success': True,
+                'message': 'Registration successful',
+                'token': token,
+                'customer': {
+                    'id': customer['_id'],
+                    'email': customer['email'],
+                    'username': customer['username'],
+                    'full_name': customer['full_name'],
+                    'loyalty_points': customer.get('loyalty_points', 0),
+                    'phone': customer.get('phone', ''),
+                    'delivery_address': customer.get('delivery_address', {})
+                },
+                'session_id': session.get('_id') if session else None
+            }, status=status.HTTP_201_CREATED)
+            
+        except ValueError as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Customer registration error: {str(e)}")
+            return Response({
+                'success': False,
+                'error': 'Registration failed. Please try again.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

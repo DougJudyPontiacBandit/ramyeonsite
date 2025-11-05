@@ -233,7 +233,7 @@ export default {
           if (result.success && result.results) {
             // Map database orders to component format
             this.orders = result.results.map(order => ({
-              id: order.order_id,
+              id: order.order_id || order._id,  // Try order_id first, fallback to _id
               orderTime: order.created_at || order.transaction_date,
               status: order.order_status || order.status || 'pending',
               items: (order.items || []).map(item => ({

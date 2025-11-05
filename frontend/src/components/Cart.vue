@@ -1218,7 +1218,7 @@ export default {
         let paymentStatus = 'pending';
         
         // Generate order ID
-        const orderId = 'ORDER-' + Date.now();
+        let orderId = 'ORDER-' + Date.now();
         
         // Track payment attempt
         this.trackPaymentAttempt(orderId, 'initiated');
@@ -1460,6 +1460,12 @@ export default {
         }
         
         // Show confirmation modal with the correct backend order ID
+        console.log('🔍 DEBUG - Points values before setting confirmedOrder:');
+        console.log('  - this.pointsToRedeem:', this.pointsToRedeem, '(type:', typeof this.pointsToRedeem + ')');
+        console.log('  - this.useLoyaltyPoints:', this.useLoyaltyPoints);
+        console.log('  - this.pointsDiscount:', this.pointsDiscount);
+        console.log('  - pointsEarned:', pointsEarned);
+        
         this.confirmedOrder = {
           id: orderId,  // This is now the backend order ID (ONLINE-XXXXX)
           total: this.finalTotal.toFixed(2),
@@ -1472,6 +1478,7 @@ export default {
         
         console.log('🎉 Showing order confirmation modal');
         console.log('Confirmed order data:', this.confirmedOrder);
+        console.log('  - pointsUsed in confirmed order:', this.confirmedOrder.pointsUsed);
         console.log('showOrderConfirmation before:', this.showOrderConfirmation);
         
         // Use nextTick to ensure DOM is updated
