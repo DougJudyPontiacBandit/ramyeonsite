@@ -103,7 +103,7 @@ export const authAPI = {
   // Get current authenticated customer
   getProfile: async () => {
     try {
-      const response = await apiClient.get('/auth/customer/me/');
+      const response = await apiClient.get('/auth/customer/profile/');
       return response.data;
     } catch (error) {
       console.error('API Error in getProfile:', error);
