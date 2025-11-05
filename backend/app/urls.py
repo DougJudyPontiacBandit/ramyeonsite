@@ -38,6 +38,7 @@ from .kpi_views.customer_views import (
     CustomerStatisticsView,
     CustomerLoyaltyView,
     CustomerLoginView,
+    CustomerRegisterView,  # NEW: Customer registration
     CustomerCurrentUserView,
     # Customer-facing loyalty endpoints (JWT auth)
     CustomerLoyaltyBalanceView,
@@ -261,7 +262,10 @@ urlpatterns = [
     path('auth/refresh/', RefreshTokenView.as_view(), name='refresh-token'),
     path('auth/me/', CurrentUserView.as_view(), name='current-user'),
     path('auth/verify-token/', VerifyTokenView.as_view(), name='verify-token'),
+    
+    # Customer Authentication
     path('auth/customer/login/', CustomerLoginView.as_view(), name='customer-login'),
+    path('auth/customer/register/', CustomerRegisterView.as_view(), name='customer-register'),  # NEW: Registration endpoint
     path('auth/customer/me/', CustomerCurrentUserView.as_view(), name='customer-current-user'),
     
     # ========== CUSTOMER LOYALTY (JWT AUTH) ==========

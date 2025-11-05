@@ -63,9 +63,35 @@ apiClient.interceptors.request.use(
 
 // Auth API - Connected to /api/auth/customer/* endpoints
 export const authAPI = {
-  // Registration is not supported by current PANN_POS API
-  register: async () => {
-    throw { message: 'Registration is not supported by the current PANN_POS API' };
+  // Customer Registration
+  register: async (userData) => {
+    try {
+      // Backend expects: { email, password, username, full_name, phone }
+      const registrationData = {
+        email: userData.email,
+        password: userData.password,
+        username: userData.email.split('@')[0], // Use email prefix as username
+        full_name: `${userData.firstName} ${userData.lastName}`,
+        phone: userData.phone || '',
+        delivery_address: {}
+      };
+
+      const response = await apiClient.post('/auth/customer/register/', registrationData);
+      
+      // Store tokens if returned
+      const { token, access_token, refresh_token } = response.data || {};
+      if (token || access_token) {
+        localStorage.setItem('access_token', token || access_token);
+      }
+      if (refresh_token) {
+        localStorage.setItem('refresh_token', refresh_token);
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Registration API Error:', error);
+      throw error.response?.data || { message: 'Registration failed. Please try again.' };
+    }
   },
 
   // Login (customer login via PANN_POS customer service)
