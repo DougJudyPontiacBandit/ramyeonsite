@@ -9,6 +9,8 @@ image.png<template>
       </div>
 
       <div class="cart-content" v-if="cartItems.length > 0">
+        <!-- Left Column -->
+        <div class="left-column">
         <!-- Cart Items -->
         <div class="cart-items">
           <div class="cart-item" v-for="item in cartItems" :key="item.id">
@@ -43,6 +45,87 @@ image.png<template>
           </div>
         </div>
 
+        <!-- Delivery Options -->
+        <div class="delivery-options">
+          <h2>Delivery Options</h2>
+          <div class="option-group">
+            <label class="option-label">
+              <input type="radio" v-model="deliveryType" value="delivery" />
+              <div class="option-content">
+                <div class="option-icon">🚚</div>
+                <div class="option-text">
+                  <h3>Delivery</h3>
+                  <p>Get it delivered to your doorstep</p>
+                  <span class="option-time">30-45 mins</span>
+                </div>
+              </div>
+            </label>
+            <label class="option-label">
+              <input type="radio" v-model="deliveryType" value="pickup" />
+              <div class="option-content">
+                <div class="option-icon">🏪</div>
+                <div class="option-text">
+                  <h3>Pickup</h3>
+                  <p>Pick up from our store</p>
+                  <span class="option-time">15-20 mins</span>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="payment-methods">
+          <h2>Payment Method</h2>
+          <div class="payment-options">
+            <label class="payment-option">
+              <input type="radio" v-model="paymentMethod" value="cash" />
+              <div class="payment-content">
+                <div class="payment-icon">💵</div>
+                <span>Cash on Delivery</span>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" v-model="paymentMethod" value="gcash" />
+              <div class="payment-content">
+                <div class="payment-icon">📱</div>
+                <span>GCash</span>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" v-model="paymentMethod" value="card" />
+              <div class="payment-content">
+                <div class="payment-icon">💳</div>
+                <span>Credit/Debit Card</span>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" v-model="paymentMethod" value="paymaya" />
+              <div class="payment-content">
+                <div class="payment-icon">🏦</div>
+                <span>PayMaya</span>
+              </div>
+            </label>
+            <label class="payment-option">
+              <input type="radio" v-model="paymentMethod" value="grabpay" />
+              <div class="payment-content">
+                <div class="payment-icon">🎯</div>
+                <span>GrabPay QR</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Checkout Button -->
+        <div class="checkout-section">
+          <button class="checkout-btn" @click="proceedToCheckout" :disabled="!canCheckout">
+            <span v-if="isProcessing" class="loading-spinner"></span>
+            {{ isProcessing ? 'Processing...' : `Place Order - ₱${finalTotal.toFixed(2)}` }}
+          </button>
+        </div>
+        </div>
+        <!-- Right Column -->
+        <div class="right-column">
         <!-- Order Summary -->
         <div class="order-summary">
           <h2>Order Summary</h2>
@@ -175,35 +258,6 @@ image.png<template>
           </div>
         </div>
 
-        <!-- Delivery Options -->
-        <div class="delivery-options">
-          <h2>Delivery Options</h2>
-          <div class="option-group">
-            <label class="option-label">
-              <input type="radio" v-model="deliveryType" value="delivery" />
-              <div class="option-content">
-                <div class="option-icon">🚚</div>
-                <div class="option-text">
-                  <h3>Delivery</h3>
-                  <p>Get it delivered to your doorstep</p>
-                  <span class="option-time">30-45 mins</span>
-                </div>
-              </div>
-            </label>
-            <label class="option-label">
-              <input type="radio" v-model="deliveryType" value="pickup" />
-              <div class="option-content">
-                <div class="option-icon">🏪</div>
-                <div class="option-text">
-                  <h3>Pickup</h3>
-                  <p>Pick up from our store</p>
-                  <span class="option-time">15-20 mins</span>
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-
         <!-- Delivery Address (only show if delivery is selected) -->
         <div class="delivery-address" v-if="deliveryType === 'delivery'">
           <h2>Delivery Address</h2>
@@ -225,48 +279,6 @@ image.png<template>
           </div>
         </div>
 
-        <!-- Payment Methods -->
-        <div class="payment-methods">
-          <h2>Payment Method</h2>
-          <div class="payment-options">
-            <label class="payment-option">
-              <input type="radio" v-model="paymentMethod" value="cash" />
-              <div class="payment-content">
-                <div class="payment-icon">💵</div>
-                <span>Cash on Delivery</span>
-              </div>
-            </label>
-            <label class="payment-option">
-              <input type="radio" v-model="paymentMethod" value="gcash" />
-              <div class="payment-content">
-                <div class="payment-icon">📱</div>
-                <span>GCash</span>
-              </div>
-            </label>
-            <label class="payment-option">
-              <input type="radio" v-model="paymentMethod" value="card" />
-              <div class="payment-content">
-                <div class="payment-icon">💳</div>
-                <span>Credit/Debit Card</span>
-              </div>
-            </label>
-            <label class="payment-option">
-              <input type="radio" v-model="paymentMethod" value="paymaya" />
-              <div class="payment-content">
-                <div class="payment-icon">🏦</div>
-                <span>PayMaya</span>
-              </div>
-            </label>
-            <label class="payment-option">
-              <input type="radio" v-model="paymentMethod" value="grabpay" />
-              <div class="payment-content">
-                <div class="payment-icon">🎯</div>
-                <span>GrabPay QR</span>
-              </div>
-            </label>
-          </div>
-        </div>
-
         <!-- Special Instructions -->
         <div class="special-instructions">
           <h2>Special Instructions</h2>
@@ -276,13 +288,6 @@ image.png<template>
             class="instructions-field"
           ></textarea>
         </div>
-
-        <!-- Checkout Button -->
-        <div class="checkout-section">
-          <button class="checkout-btn" @click="proceedToCheckout" :disabled="!canCheckout">
-            <span v-if="isProcessing" class="loading-spinner"></span>
-            {{ isProcessing ? 'Processing...' : `Place Order - ₱${finalTotal.toFixed(2)}` }}
-          </button>
         </div>
       </div>
 
@@ -475,18 +480,24 @@ export default {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
         await this.updateCartItemQuantity(item.product_id || item.id, item.quantity + 1);
+        // Recalculate promotion discount after quantity change
+        await this.recalculateExistingPromotions();
       }
     },
     async decreaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item && item.quantity > 1) {
         await this.updateCartItemQuantity(item.product_id || item.id, item.quantity - 1);
+        // Recalculate promotion discount after quantity change
+        await this.recalculateExistingPromotions();
       }
     },
     async removeItem(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
         await this.removeFromCart(item.product_id || item.id);
+        // Recalculate promotion discount after item removal
+        await this.recalculateExistingPromotions();
       }
     },
     
@@ -2188,8 +2199,15 @@ export default {
 .cart-content {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 30px;
+  column-gap: 30px;
   align-items: start;
+}
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .cart-items {
@@ -2197,6 +2215,7 @@ export default {
   border-radius: 20px;
   padding: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
 }
 
 .cart-item {
@@ -2378,7 +2397,7 @@ export default {
   border-radius: 20px;
   padding: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  margin: 0;
   position: sticky;
   top: 20px;
 }
@@ -2750,7 +2769,7 @@ export default {
   border-radius: 20px;
   padding: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  margin: 0;
 }
 
 .delivery-options h2,
@@ -2816,7 +2835,7 @@ export default {
   border-radius: 20px;
   padding: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  margin: 0;
 }
 
 .delivery-address h2 {
@@ -2866,6 +2885,8 @@ export default {
 
 .map-container {
   position: relative;
+  margin-top: 15px;
+  margin-bottom: 0;
 }
 
 .map-instructions {
@@ -2954,6 +2975,7 @@ export default {
   padding: 25px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
   text-align: center;
+  margin: 0;
 }
 
 .checkout-btn {

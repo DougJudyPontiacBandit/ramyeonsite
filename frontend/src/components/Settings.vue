@@ -243,34 +243,6 @@
             </label>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-icon">📊</span>
-              <div class="setting-text">
-                <div class="setting-label">Analytics</div>
-                <div class="setting-desc">Help improve the app</div>
-              </div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="analytics" @change="toggleAnalytics">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-icon">🔐</span>
-              <div class="setting-text">
-                <div class="setting-label">Two-Factor Authentication</div>
-                <div class="setting-desc">
-                  {{ twoFactorEnabled ? '✓ Enabled - Extra security active' : 'Add extra layer of security' }}
-                </div>
-              </div>
-            </div>
-            <button class="btn-small" :class="twoFactorEnabled ? 'btn-success' : 'btn-primary'" @click="setup2FA">
-              {{ twoFactorEnabled ? '✓ Enabled' : '+ Setup' }}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -451,8 +423,6 @@ export default {
       promotionalOffers: false,
       notificationSound: true,
       locationServices: true,
-      analytics: false,
-      twoFactorEnabled: false,
       autoSaveCart: true,
       quickReorder: true,
       successMessage: '',
@@ -482,8 +452,6 @@ export default {
       this.promotionalOffers = settings.promotionalOffers ?? false;
       this.notificationSound = settings.notificationSound ?? true;
       this.locationServices = settings.locationServices ?? true;
-      this.analytics = settings.analytics ?? false;
-      this.twoFactorEnabled = settings.twoFactorEnabled ?? false;
       this.autoSaveCart = settings.autoSaveCart ?? true;
       this.quickReorder = settings.quickReorder ?? true;
       
@@ -505,8 +473,6 @@ export default {
         promotionalOffers: this.promotionalOffers,
         notificationSound: this.notificationSound,
         locationServices: this.locationServices,
-        analytics: this.analytics,
-        twoFactorEnabled: this.twoFactorEnabled,
         autoSaveCart: this.autoSaveCart,
         quickReorder: this.quickReorder,
         updatedAt: new Date().toISOString()
@@ -614,11 +580,6 @@ export default {
       this.showSuccessMessage(`Location services ${this.locationServices ? 'enabled' : 'disabled'}!`);
     },
 
-    toggleAnalytics() {
-      this.saveSettings();
-      this.showSuccessMessage(`Analytics ${this.analytics ? 'enabled' : 'disabled'}!`);
-    },
-
     toggleAutoSaveCart() {
       this.saveSettings();
       this.showSuccessMessage(`Auto-save cart ${this.autoSaveCart ? 'enabled' : 'disabled'}!`);
@@ -628,24 +589,6 @@ export default {
     toggleQuickReorder() {
       this.saveSettings();
       this.showSuccessMessage(`Quick reorder ${this.quickReorder ? 'enabled' : 'disabled'}!`);
-    },
-
-    setup2FA() {
-      if (this.twoFactorEnabled) {
-        const disable = confirm('Would you like to disable Two-Factor Authentication?');
-        if (disable) {
-          this.twoFactorEnabled = false;
-          this.saveSettings();
-          this.showSuccessMessage('Two-Factor Authentication disabled!');
-        }
-      } else {
-        const enable = confirm('Would you like to enable Two-Factor Authentication for added security?');
-        if (enable) {
-          this.twoFactorEnabled = true;
-          this.saveSettings();
-          this.showSuccessMessage('Two-Factor Authentication enabled!');
-        }
-      }
     },
 
     clearCache() {
@@ -695,8 +638,6 @@ export default {
       this.promotionalOffers = false;
       this.notificationSound = true;
       this.locationServices = true;
-      this.analytics = false;
-      this.twoFactorEnabled = false;
       this.autoSaveCart = true;
       this.quickReorder = true;
       
