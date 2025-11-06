@@ -35,10 +35,10 @@
               <a href="#" class="logout-link" @click.prevent="handleLogout">Sign Out</a>
             </div>
             <div class="social-icons">
-              <a href="#" class="social-link" aria-label="Facebook">
+              <a href="https://www.facebook.com/ramyeoncornerbislig" class="social-link" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
                 <img src="./assets/Nav Bar/fb.png" alt="Facebook" />
               </a>
-              <a href="#" class="social-link" aria-label="Twitter">
+              <!--<a href="#" class="social-link" aria-label="Twitter">
                 <img src="./assets/Nav Bar/twt.png" alt="Twitter" />
               </a>
               <a href="#" class="social-link" aria-label="Instagram">
@@ -46,7 +46,7 @@
               </a>
               <a href="#" class="social-link" aria-label="Github">
                 <img src="./assets/Nav Bar/git.png" alt="Github" />
-              </a>
+              </a>-->
             </div>
           </div>
         </div>
@@ -72,7 +72,7 @@
       </nav>
 
       <!-- Page Content -->
-      <HelloWorld v-if="currentPage === 'Home'" />
+      <HelloWorld v-if="currentPage === 'Home'" @setCurrentPage="setCurrentPage"  />
       <AboutUs v-if="currentPage === 'About'" />
       <MenuPage v-if="currentPage === 'Menu'" :onAddToCart="addToCart" />
       <ContactUs v-if="currentPage === 'Contact'" />
@@ -202,18 +202,18 @@
 
       <!-- Social Media Icons (Outside Bottom Footer) -->
       <div class="footer-social">
-        <a href="#" aria-label="Facebook" class="social-link">
-          <img src="./assets/Nav Bar/fb.png" alt="Facebook" class="social-icon-img">
-        </a>
-        <a href="#" aria-label="Instagram" class="social-link">
-          <img src="./assets/Nav Bar/ig.png" alt="Instagram" class="social-icon-img">
-        </a>
-        <a href="#" aria-label="Twitter" class="social-link">
-          <img src="./assets/Nav Bar/twt.png" alt="Twitter" class="social-icon-img">
-        </a>
-        <a href="#" aria-label="GitHub" class="social-link">
-          <img src="./assets/Nav Bar/git.png" alt="GitHub" class="social-icon-img">
-        </a>
+       <a href="https://www.facebook.com/ramyeoncornerbislig" class="social-link" aria-label="Facebook" target="_blank" rel="noopener noreferrer">
+                <img src="./assets/Nav Bar/fb.png" alt="Facebook" />
+              </a>
+              <!--<a href="#" class="social-link" aria-label="Twitter">
+                <img src="./assets/Nav Bar/twt.png" alt="Twitter" />
+              </a>
+              <a href="#" class="social-link" aria-label="Instagram">
+                <img src="./assets/Nav Bar/ig.png" alt="Instagram" />
+              </a>
+              <a href="#" class="social-link" aria-label="Github">
+                <img src="./assets/Nav Bar/git.png" alt="Github" />
+              </a>-->
       </div>
 
       <!-- Copyright Section -->

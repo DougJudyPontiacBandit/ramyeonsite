@@ -234,6 +234,7 @@ export default {
       // Reset inputs when switching types
       this.address = '';
       this.pickupTime = '';
+     
     },
     orderNow() {
       if (this.deliveryType === 'Delivery' && !this.address) {
@@ -252,6 +253,7 @@ export default {
       alert(message);
       this.address = '';
       this.pickupTime = '';
+      this.$emit('setCurrentPage', 'Login');
     }
   }
 }

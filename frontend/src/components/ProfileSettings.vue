@@ -1158,6 +1158,7 @@ export default {
   transition: all 0.3s ease;
   background: white;
   color: #333;
+  
 }
 
 .form-input:focus {
@@ -1180,7 +1181,7 @@ export default {
 .form-textarea {
   resize: vertical;
   min-height: 80px;
-  padding-right: 1rem;
+  padding-right: 1  rem;
 }
 
 .input-icon {
