@@ -299,20 +299,6 @@
 
           <div class="setting-row">
             <div class="setting-info">
-              <span class="setting-icon">💳</span>
-              <div class="setting-text">
-                <div class="setting-label">Remember Payment</div>
-                <div class="setting-desc">Save your payment method</div>
-              </div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="rememberPayment" @change="toggleRememberPayment">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
               <span class="setting-icon">⚡</span>
               <div class="setting-text">
                 <div class="setting-label">Quick Reorder</div>
@@ -468,7 +454,6 @@ export default {
       analytics: false,
       twoFactorEnabled: false,
       autoSaveCart: true,
-      rememberPayment: false,
       quickReorder: true,
       successMessage: '',
       showResetModal: false,
@@ -500,7 +485,6 @@ export default {
       this.analytics = settings.analytics ?? false;
       this.twoFactorEnabled = settings.twoFactorEnabled ?? false;
       this.autoSaveCart = settings.autoSaveCart ?? true;
-      this.rememberPayment = settings.rememberPayment ?? false;
       this.quickReorder = settings.quickReorder ?? true;
       
       localStorage.setItem('ramyeon_dark_mode', this.isDarkMode.toString());
@@ -524,7 +508,6 @@ export default {
         analytics: this.analytics,
         twoFactorEnabled: this.twoFactorEnabled,
         autoSaveCart: this.autoSaveCart,
-        rememberPayment: this.rememberPayment,
         quickReorder: this.quickReorder,
         updatedAt: new Date().toISOString()
       };
@@ -641,10 +624,6 @@ export default {
       this.showSuccessMessage(`Auto-save cart ${this.autoSaveCart ? 'enabled' : 'disabled'}!`);
     },
 
-    toggleRememberPayment() {
-      this.saveSettings();
-      this.showSuccessMessage(`Remember payment ${this.rememberPayment ? 'enabled' : 'disabled'}!`);
-    },
 
     toggleQuickReorder() {
       this.saveSettings();
@@ -719,7 +698,6 @@ export default {
       this.analytics = false;
       this.twoFactorEnabled = false;
       this.autoSaveCart = true;
-      this.rememberPayment = false;
       this.quickReorder = true;
       
       this.applyTheme();
