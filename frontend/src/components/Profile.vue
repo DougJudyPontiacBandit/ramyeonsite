@@ -27,40 +27,20 @@
               </div>
             </div>
           </div>
-          
-          <div class="points-actions">
-            <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
-              🎁 Browse Promotions
-            </button>
-            <button class="points-history-btn" @click="showPointsHistory">
-              📊 Points History
-            </button>
-          </div>
-          
-          <!-- Points Info -->
-          <div class="points-info">
-            <div class="info-item">
-              <span class="info-label">Earn Rate:</span>
-              <span class="info-value">20% of order value</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Redemption:</span>
-              <span class="info-value">4 points = ₱1 discount</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Min Redemption:</span>
-              <span class="info-value">40 points (₱10)</span>
-            </div>
-          </div>
         </div>
 
         <!-- Vouchers Section -->
         <div class="vouchers-section">
           <div class="section-header">
             <h2 class="section-title">{{ user.vouchers.length > 0 ? 'My Vouchers' : 'No Vouchers Yet' }}</h2>
-            <a v-if="user.vouchers.length > 2" href="#" class="see-all-btn" @click.prevent="showAllVouchers">
-              {{ showAllVouchersFlag ? 'Show Less' : 'See All' }}
-            </a>
+            <div class="section-header-actions">
+              <button class="promotions-btn" @click="$emit('setCurrentPage', 'Promotions')">
+                🎁 Browse Promotions
+              </button>
+              <a v-if="user.vouchers.length > 2" href="#" class="see-all-btn" @click.prevent="showAllVouchers">
+                {{ showAllVouchersFlag ? 'Show Less' : 'See All' }}
+              </a>
+            </div>
           </div>
           
           <div v-if="user.vouchers.length > 0" class="vouchers-grid">
@@ -121,9 +101,6 @@
           <div class="settings-buttons">
             <button class="settings-btn order-history-btn" @click="$emit('setCurrentPage', 'OrderHistory')">
               📦 Order History
-            </button>
-            <button class="settings-btn payment-history-btn" @click="$emit('setCurrentPage', 'PaymentHistory')">
-              💳 Payment History
             </button>
           </div>
         </div>
@@ -365,10 +342,6 @@ export default {
       this.showAllVouchersFlag = !this.showAllVouchersFlag;
     },
 
-    showPointsHistory() {
-      // Show points history modal
-      this.showPointsHistoryModal = true;
-    },
 
     updateUserSession() {
       const userSession = {
@@ -543,15 +516,8 @@ export default {
   font-weight: 500;
 }
 
-.points-actions {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 20px;
-}
 
-.promotions-btn,
-.points-history-btn {
-  flex: 1;
+.promotions-btn {
   padding: 12px 20px;
   border: none;
   border-radius: 12px;
@@ -559,64 +525,15 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.95rem;
-}
-
-.promotions-btn {
   background: linear-gradient(135deg, #ff4757, #ff3742);
   color: white;
+  white-space: nowrap;
 }
 
 .promotions-btn:hover {
   background: linear-gradient(135deg, #ff3742, #ff2f3a);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 71, 87, 0.3);
-}
-
-.points-history-btn {
-  background: linear-gradient(135deg, #ff9800, #f57c00);
-  color: white;
-}
-
-.points-history-btn:hover {
-  background: linear-gradient(135deg, #f57c00, #ef6c00);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
-}
-
-.points-info {
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 12px;
-  padding: 15px;
-  border: 1px solid rgba(255, 152, 0, 0.2);
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 152, 0, 0.1);
-}
-
-.info-item:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  font-weight: 600;
-  color: #e65100;
-  font-size: 0.9rem;
-}
-
-.info-value {
-  font-weight: 500;
-  color: #bf360c;
-  font-size: 0.9rem;
-}
-
-/* Smooth hover effect */
-.promotions-btn {
-  transition: all 0.3s ease;
 }
 
 /* Responsive enhancements */
