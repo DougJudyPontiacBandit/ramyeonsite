@@ -275,24 +275,8 @@ export const ordersAPI = {
       return { success: true, ...response.data };
     } catch (error) {
       console.error('❌ Error fetching orders from database:', error);
-      console.error('Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url
-      });
-      
-      // Check if it's an authentication error
-      if (error.response?.status === 401) {
-        console.error('🔐 Authentication error - JWT token may be expired or invalid');
-      } else if (error.response?.status === 404) {
-        console.error('🔍 Endpoint not found - Check if backend is running and URL is correct');
-      }
-      
       // Fallback to localStorage only if database fails
       const orders = JSON.parse(localStorage.getItem('ramyeon_orders') || '[]');
-      console.log('📦 Falling back to localStorage:', orders.length, 'orders');
       return { success: false, results: orders, error: error.message };
     }
   },

@@ -34,11 +34,9 @@ class UpdateOrderStatusView(APIView):
                 'pending',
                 'confirmed',
                 'preparing',
-                'processing',  # Alternative to preparing
                 'cooking',
                 'ready',
                 'out_for_delivery',
-                'on_the_way',  # Alternative to out_for_delivery
                 'delivered',
                 'completed',
                 'cancelled'
@@ -212,13 +210,6 @@ def get_status_display_info(status_code):
             'color': 'blue',
             'progress': 40
         },
-        'processing': {
-            'label': 'Processing Order',
-            'description': 'We are processing and preparing your order',
-            'icon': '⚙️',
-            'color': 'blue',
-            'progress': 40
-        },
         'cooking': {
             'label': 'Cooking',
             'description': 'Your food is being prepared in our kitchen',
@@ -235,13 +226,6 @@ def get_status_display_info(status_code):
         },
         'out_for_delivery': {
             'label': 'Out for Delivery',
-            'description': 'Your order is on the way to you',
-            'icon': '🚚',
-            'color': 'blue',
-            'progress': 90
-        },
-        'on_the_way': {
-            'label': 'On the Way',
             'description': 'Your order is on the way to you',
             'icon': '🚚',
             'color': 'blue',
