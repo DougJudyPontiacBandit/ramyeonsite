@@ -214,11 +214,40 @@ export default {
       this.isLoading = true;
       
       try {
+        // IMPORTANT: Clear old session data first to prevent showing wrong user
+        localStorage.removeItem('ramyeon_user_session');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        
         // Call backend API to login
         const response = await authAPI.login(
           this.formData.email.toLowerCase().trim(),
           this.formData.password
         );
+        
+        console.log('🔍 DEBUG: Login response:', response);
+        
+        // Check if token was set (authAPI.login sets it in localStorage)
+        const token = localStorage.getItem('access_token');
+        console.log('🔍 DEBUG: Token in localStorage after login:', !!token);
+        
+        // If no token, check if response has token data
+        if (!token) {
+          // Check if token is in response but wasn't set (different structure)
+          const responseToken = response?.access_token || response?.token || response?.data?.access_token;
+          if (responseToken) {
+            console.log('🔍 DEBUG: Found token in response, setting manually');
+            localStorage.setItem('access_token', responseToken);
+          } else {
+            // Log warning but don't fail - maybe token is set via cookies or different mechanism
+            console.warn('⚠️ No token found in response or localStorage, but login succeeded');
+            console.warn('⚠️ Response structure:', Object.keys(response || {}));
+            // Don't throw error - let it proceed and see if profile fetch works
+            // The profile component will handle the missing token case
+          }
+        }
+        
+        console.log('✅ Login successful, token set:', !!localStorage.getItem('access_token'));
         
         // Create user session from API response
         // Backend returns: { access_token, user, ... } or legacy { customer }
@@ -245,25 +274,31 @@ export default {
         
         this.successMessage = response.message || 'Login successful! Welcome back!';
         
-        setTimeout(() => {
-          this.$emit('loginSuccess', userSession);
-        }, 1000);
+        // Emit login success immediately (no delay needed)
+        this.$emit('loginSuccess', userSession);
         
       } catch (error) {
         console.error('Login error:', error);
+        console.error('Login error details:', JSON.stringify(error, null, 2));
         
         // Handle specific error messages from backend
-        if (error.error) {
-          this.errorMessage = error.error;
+        let errorMsg = 'Invalid email or password. Please try again.';
+        
+        if (typeof error === 'string') {
+          errorMsg = error;
+        } else if (error.error) {
+          errorMsg = error.error;
         } else if (error.detail) {
-          this.errorMessage = error.detail;
+          errorMsg = error.detail;
         } else if (error.message) {
-          this.errorMessage = error.message;
+          errorMsg = error.message;
+        } else if (error.non_field_errors && Array.isArray(error.non_field_errors)) {
+          errorMsg = error.non_field_errors[0];
         } else if (error.non_field_errors) {
-          this.errorMessage = error.non_field_errors[0];
-        } else {
-          this.errorMessage = 'Invalid email or password. Please try again.';
+          errorMsg = error.non_field_errors;
         }
+        
+        this.errorMessage = errorMsg;
       } finally {
         this.isLoading = false;
       }

@@ -156,15 +156,33 @@ export default {
     }
   },
   mounted() {
-    this.loadUserData();
     this.loadDarkModePreference();
-    this.fetchCurrentUser();
-    this.loadSavedVouchers();
+    // Fetch user data from API first (this will update this.user)
+    this.fetchCurrentUser().then(() => {
+      // After fetching fresh data, load saved vouchers
+      this.loadSavedVouchers();
+    });
+    // Don't load stale data from localStorage
+    this.loadUserData();
   },
   
   activated() {
+    // Clear any stale data first
+    this.user = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      points: 0,
+      loyalty_points: 0,
+      vouchers: [],
+      pointsQRCode: this.generatePointsQRCode()
+    };
+    
     // Refresh user data when component is activated (navigated to)
-    this.fetchCurrentUser();
+    // Add a small delay to ensure token is set after login
+    setTimeout(() => {
+      this.fetchCurrentUser();
+    }, 100);
   },
   
   watch: {
@@ -179,26 +197,18 @@ export default {
   },
   methods: {
     loadUserData() {
-      // Load user data from localStorage
-      const userSession = localStorage.getItem('ramyeon_user_session');
-      if (userSession) {
-        const userData = JSON.parse(userSession);
-        this.user = {
-          ...userData,
-          vouchers: [],
-          pointsQRCode: userData.pointsQRCode || this.generatePointsQRCode()
-        };
-      } else {
-        // Default user data if no session
-        this.user = {
-          firstName: 'Guest',
-          lastName: 'User',
-          email: 'guest@ramyeoncorner.com',
-          points: 3280,
-          vouchers: [],
-          pointsQRCode: this.generatePointsQRCode()
-        };
-      }
+      // Don't load from localStorage - wait for API fetch to get fresh data
+      // This prevents showing stale data from previous user
+      // Set default/loading state instead
+      this.user = {
+        firstName: '',
+        lastName: '',
+        email: '',
+        points: 0,
+        loyalty_points: 0,
+        vouchers: [],
+        pointsQRCode: this.generatePointsQRCode()
+      };
     },
 
     loadSavedVouchers() {
@@ -214,9 +224,22 @@ export default {
         // Check if user is logged in
         const token = localStorage.getItem('access_token');
         console.log('🔍 DEBUG: JWT Token exists:', !!token);
+        console.log('🔍 DEBUG: Token value (first 20 chars):', token ? token.substring(0, 20) + '...' : 'null');
         
         if (!token) {
           console.log('⚠️ No JWT token - user not logged in');
+          // Clear any stale session data
+          localStorage.removeItem('ramyeon_user_session');
+          // Reset user to empty state
+          this.user = {
+            firstName: '',
+            lastName: '',
+            email: '',
+            points: 0,
+            loyalty_points: 0,
+            vouchers: [],
+            pointsQRCode: this.generatePointsQRCode()
+          };
           return;
         }
         
@@ -236,17 +259,47 @@ export default {
         }
         
         console.log('🔍 DEBUG: Final user object:', user);
+        console.log('🔍 DEBUG: User email from API:', user.email);
         console.log('🔍 DEBUG: User loyalty_points:', user.loyalty_points);
         
-        const first = user.first_name || user.firstName || (user.full_name?.split(' ')[0])
-        const last = user.last_name || user.lastName || (user.full_name?.split(' ').slice(1).join(' ') || '')
-        this.user = {
-          ...this.user,
-          firstName: first || this.user.firstName,
-          lastName: last || this.user.lastName,
-          email: user.email || this.user.email,
-          loyalty_points: user.loyalty_points || 0 // Update with real points from database
+        // Verify the user matches the token (sanity check)
+        const sessionData = JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}');
+        if (sessionData.email && user.email && sessionData.email !== user.email) {
+          console.warn('⚠️ WARNING: Session email does not match API email!', {
+            session: sessionData.email,
+            api: user.email
+          });
         }
+        
+        // Extract name parts
+        const first = user.first_name || user.firstName || (user.full_name?.split(' ')[0]) || ''
+        const last = user.last_name || user.lastName || (user.full_name?.split(' ').slice(1).join(' ') || '')
+        
+        // Update user object with fresh data from API
+        this.user = {
+          firstName: first,
+          lastName: last,
+          email: user.email || '',
+          loyalty_points: user.loyalty_points || 0,
+          vouchers: this.user.vouchers || [], // Preserve vouchers
+          pointsQRCode: this.user.pointsQRCode || this.generatePointsQRCode()
+        }
+        
+        // Update localStorage session with fresh data
+        const userSession = {
+          id: user.id || user._id,
+          email: user.email,
+          username: user.username,
+          fullName: user.full_name,
+          firstName: first,
+          lastName: last,
+          phone: user.phone || '',
+          points: user.loyalty_points || 0,
+          loyalty_points: user.loyalty_points || 0,
+          deliveryAddress: user.delivery_address || {},
+          loginTime: new Date().toISOString()
+        };
+        localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
         
         console.log('✅ Profile loaded with loyalty points:', this.user.loyalty_points);
         
@@ -256,10 +309,18 @@ export default {
         console.error('❌ Profile fetch error:', e);
         console.log('💡 To fix: Make sure you are logged in and backend is running');
         
-        // Don't set test points - keep existing value or 0
-        if (!this.user.loyalty_points) {
-          this.user.loyalty_points = 0;
-        }
+        // Clear stale session data on error
+        localStorage.removeItem('ramyeon_user_session');
+        
+        // Reset to default state
+        this.user = {
+          firstName: '',
+          lastName: '',
+          email: '',
+          loyalty_points: 0,
+          vouchers: [],
+          pointsQRCode: this.generatePointsQRCode()
+        };
       }
     },
 

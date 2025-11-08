@@ -488,17 +488,40 @@ export default {
     },
     
     handleAuthSuccess(userData) {
+      // Check token but don't block navigation - let Profile component handle missing token
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.warn('⚠️ No token found after login, but proceeding to profile');
+      }
+      
       this.currentUser = userData;
-      this.setCurrentPage('Profile');
+      // Small delay to ensure all localStorage operations are complete
+      setTimeout(() => {
+        this.setCurrentPage('Profile');
+      }, 50);
     },
     
     handleLogout() {
       this.showSignOutModal = true;
     },
 
-    confirmSignOut() {
+    async confirmSignOut() {
       this.currentUser = null;
+      
+      // Clear all session data and tokens
       localStorage.removeItem('ramyeon_user_session');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      
+      // Call logout API to invalidate token on backend
+      try {
+        const { authAPI } = await import('./services/api.js');
+        await authAPI.logout();
+      } catch (error) {
+        console.error('Logout API error:', error);
+        // Continue with logout even if API call fails
+      }
+      
       this.setCurrentPage('Home');
       this.showSignOutModal = false;
 

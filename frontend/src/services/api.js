@@ -72,16 +72,33 @@ export const authAPI = {
   login: async (email, password) => {
     try {
       const response = await apiClient.post('/auth/customer/login/', { email, password });
-      const { access_token, refresh_token } = response.data || {};
-      if (access_token) {
-        localStorage.setItem('access_token', access_token);
+      console.log('🔍 DEBUG: Raw login response:', response);
+      console.log('🔍 DEBUG: Response data:', response.data);
+      
+      const responseData = response.data || {};
+      const { access_token, refresh_token, token } = responseData;
+      
+      // Try different possible token field names
+      const authToken = access_token || token || responseData.accessToken;
+      
+      if (authToken) {
+        localStorage.setItem('access_token', authToken);
+        console.log('✅ Token set in localStorage');
+      } else {
+        console.warn('⚠️ No access_token found in response:', responseData);
       }
-      if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
+      
+      if (refresh_token || responseData.refreshToken) {
+        localStorage.setItem('refresh_token', refresh_token || responseData.refreshToken);
       }
-      return response.data;
+      
+      return responseData;
     } catch (error) {
-      throw error.response?.data || { message: 'Login failed' };
+      console.error('❌ Login API error:', error);
+      console.error('❌ Error response:', error.response?.data);
+      // Return the error in a way that can be handled by the component
+      const errorData = error.response?.data || { message: 'Login failed' };
+      throw errorData;
     }
   },
 

@@ -436,10 +436,39 @@ export default {
       this.isLoading = true;
       
       try {
+        // IMPORTANT: Clear old session data first to prevent showing wrong user
+        localStorage.removeItem('ramyeon_user_session');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        
         const response = await authAPI.login(
           this.loginForm.email.toLowerCase().trim(),
           this.loginForm.password
         );
+        
+        console.log('🔍 DEBUG: Login response:', response);
+        
+        // Check if token was set (authAPI.login sets it in localStorage)
+        const token = localStorage.getItem('access_token');
+        console.log('🔍 DEBUG: Token in localStorage after login:', !!token);
+        
+        // If no token, check if response has token data
+        if (!token) {
+          // Check if token is in response but wasn't set (different structure)
+          const responseToken = response?.access_token || response?.token || response?.data?.access_token;
+          if (responseToken) {
+            console.log('🔍 DEBUG: Found token in response, setting manually');
+            localStorage.setItem('access_token', responseToken);
+          } else {
+            // Log warning but don't fail - maybe token is set via cookies or different mechanism
+            console.warn('⚠️ No token found in response or localStorage, but login succeeded');
+            console.warn('⚠️ Response structure:', Object.keys(response || {}));
+            // Don't throw error - let it proceed and see if profile fetch works
+            // The profile component will handle the missing token case
+          }
+        }
+        
+        console.log('✅ Login successful, token set:', !!localStorage.getItem('access_token'));
         
         const customer = response.customer || response.user || {};
         const userSession = {
