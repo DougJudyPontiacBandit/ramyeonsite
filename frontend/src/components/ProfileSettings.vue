@@ -25,41 +25,6 @@
         </div>
       </transition>
 
-      <!-- Profile Picture Card -->
-      <div class="settings-card">
-        <div class="card-header">
-          <h2 class="card-title">
-            <span class="title-icon">📸</span>
-            Profile Picture
-          </h2>
-        </div>
-        <div class="card-body center">
-          <div class="avatar-section">
-            <div class="avatar-wrapper" @click="triggerFileUpload">
-              <div class="avatar-container">
-                <img v-if="profileData.profilePicture" :src="profileData.profilePicture" alt="Profile" class="avatar-image" />
-                <div v-else class="avatar-placeholder">
-                  <span class="avatar-initials">{{ getInitials() }}</span>
-                </div>
-                <div class="avatar-overlay">
-                  <span class="camera-icon">📷</span>
-                  <span class="upload-text">Change Photo</span>
-                </div>
-              </div>
-              <div class="avatar-badge">✏️</div>
-            </div>
-            <input 
-              type="file" 
-              ref="fileInput" 
-              @change="handleFileUpload" 
-              accept="image/*" 
-              style="display: none;"
-            />
-            <p class="avatar-hint">Click to upload a new profile picture (Max 2MB)</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Personal Information Card -->
       <div class="settings-card">
         <div class="card-header">
@@ -325,67 +290,6 @@
         </div>
       </div>
 
-      <!-- Notification Preferences Card -->
-      <div class="settings-card">
-        <div class="card-header">
-          <h2 class="card-title">
-            <span class="title-icon">🔔</span>
-            Notification Preferences
-          </h2>
-        </div>
-        <div class="card-body">
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-icon">📧</span>
-              <div class="setting-text">
-                <div class="setting-label">Email Notifications</div>
-                <div class="setting-desc">Receive promotional emails and order updates</div>
-              </div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="profileData.emailNotifications" @change="togglePreference('emailNotifications')">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-icon">💬</span>
-              <div class="setting-text">
-                <div class="setting-label">SMS Notifications</div>
-                <div class="setting-desc">Get text messages for order status updates</div>
-              </div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="profileData.smsNotifications" @change="togglePreference('smsNotifications')">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-icon">🎁</span>
-              <div class="setting-text">
-                <div class="setting-label">Marketing Communications</div>
-                <div class="setting-desc">Receive special offers and promotions</div>
-              </div>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="profileData.marketingEmails" @change="togglePreference('marketingEmails')">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-
-          <div class="form-actions">
-            <button class="btn-primary" @click="savePreferences" :disabled="isSavingPreferences">
-              <span v-if="isSavingPreferences" class="spinner"></span>
-              <span v-else>💾</span>
-              {{ isSavingPreferences ? 'Saving Preferences...' : 'Save Preferences' }}
-            </button>
-          </div>
-        </div>
-      </div>
-
       <!-- Danger Zone Card -->
       <div class="settings-card danger-card">
         <div class="card-header">
@@ -461,11 +365,7 @@ export default {
         email: '',
         phone: '',
         address: '',
-        birthdate: '',
-        profilePicture: '',
-        emailNotifications: true,
-        smsNotifications: true,
-        marketingEmails: false
+        birthdate: ''
       },
       passwordData: {
         currentPassword: '',
@@ -478,7 +378,6 @@ export default {
       showConfirmPassword: false,
       isLoading: false,
       isPasswordLoading: false,
-      isSavingPreferences: false,
       successMessage: '',
       errorMessage: '',
       showDeleteModal: false,
@@ -536,11 +435,7 @@ export default {
             email: userData.email || '',
             phone: userData.phone || '',
             address: userData.address || (userData.delivery_address?.street || ''),
-            birthdate: userData.birthdate || '',
-            profilePicture: userData.profilePicture || userData.profile_picture || '',
-            emailNotifications: userData.emailNotifications !== false,
-            smsNotifications: userData.smsNotifications !== false,
-            marketingEmails: userData.marketingEmails || false
+            birthdate: userData.birthdate || ''
           };
         } catch (error) {
           console.error('Error loading user data:', error);
@@ -565,7 +460,6 @@ export default {
           phone: customer.phone || this.profileData.phone,
           address: customer.delivery_address?.street || this.profileData.address,
           birthdate: customer.birthdate || this.profileData.birthdate,
-          profilePicture: customer.profile_picture || this.profileData.profilePicture,
         }
       } catch (error) {
         console.log('Not logged in or error fetching profile:', error)
@@ -661,8 +555,7 @@ export default {
           delivery_address: {
             street: this.profileData.address
           },
-          birthdate: this.profileData.birthdate,
-          profile_picture: this.profileData.profilePicture
+          birthdate: this.profileData.birthdate
         };
 
         const response = await authAPI.updateProfile(updateData);
@@ -676,7 +569,6 @@ export default {
           phone: this.profileData.phone,
           address: this.profileData.address,
           birthdate: this.profileData.birthdate,
-          profilePicture: this.profileData.profilePicture,
           updatedAt: new Date().toISOString()
         };
         localStorage.setItem('ramyeon_user_session', JSON.stringify(updatedUser));
@@ -724,74 +616,7 @@ export default {
       }
     },
 
-    togglePreference(preference) {
-      // Preference already toggled by v-model, but we can log which one
-      console.log(`Preference ${preference} toggled`);
-    },
 
-    async savePreferences() {
-      this.isSavingPreferences = true;
-      
-      try {
-        const { authAPI } = await import('../services/api.js')
-        
-        const preferences = {
-          emailNotifications: this.profileData.emailNotifications,
-          smsNotifications: this.profileData.smsNotifications,
-          marketingEmails: this.profileData.marketingEmails
-        };
-
-        await authAPI.updateProfile({ preferences });
-
-        const userSession = JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}');
-        localStorage.setItem('ramyeon_user_session', JSON.stringify({ ...userSession, ...preferences }));
-
-        this.showSuccessMessage('Preferences saved successfully!');
-      } catch (error) {
-        const userSession = JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}');
-        localStorage.setItem('ramyeon_user_session', JSON.stringify({
-          ...userSession,
-          emailNotifications: this.profileData.emailNotifications,
-          smsNotifications: this.profileData.smsNotifications,
-          marketingEmails: this.profileData.marketingEmails
-        }));
-        this.showSuccessMessage('Preferences saved locally!');
-      } finally {
-        this.isSavingPreferences = false;
-      }
-    },
-
-    getInitials() {
-      const first = this.profileData.firstName || 'U';
-      const last = this.profileData.lastName || 'S';
-      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
-    },
-
-    triggerFileUpload() {
-      this.$refs.fileInput.click();
-    },
-
-    handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          this.showErrorMessage('Image size must be less than 2MB');
-          return;
-        }
-
-        if (!file.type.startsWith('image/')) {
-          this.showErrorMessage('Please upload an image file');
-          return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          this.profileData.profilePicture = e.target.result;
-          this.showSuccessMessage('Profile picture updated! Click "Save Changes" to save.');
-        };
-        reader.readAsDataURL(file);
-      }
-    },
 
     exportData() {
       const userSession = JSON.parse(localStorage.getItem('ramyeon_user_session') || '{}');
@@ -1008,117 +833,18 @@ export default {
   text-align: center;
 }
 
-/* Avatar Section */
-.avatar-section {
-  display: inline-block;
-}
-
-.avatar-wrapper {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.avatar-container {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-  border: 4px solid #ff4b4b;
-  box-shadow: 0 4px 12px rgba(255, 75, 75, 0.3);
-  transition: all 0.3s ease;
-}
-
-.avatar-wrapper:hover .avatar-container {
-  transform: scale(1.05);
-  box-shadow: 0 6px 20px rgba(255, 75, 75, 0.4);
-}
-
-.avatar-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar-initials {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: white;
-}
-
-.avatar-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  gap: 0.5rem;
-}
-
-.avatar-container:hover .avatar-overlay {
-  opacity: 1;
-}
-
-.camera-icon {
-  font-size: 2rem;
-}
-
-.upload-text {
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-
-.avatar-badge {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(135deg, #ff4b4b, #ff5c33);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.125rem;
-  border: 3px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.avatar-hint {
-  color: #666;
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.dark-mode .avatar-hint {
-  color: #aaa;
-}
-
 /* Form */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-group {
@@ -1151,13 +877,14 @@ export default {
 
 .form-input {
   width: 100%;
-  padding: 0.875rem 3rem 0.875rem 1rem;
+  padding: 0.875rem 1rem 0.875rem 3rem;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.3s ease;
   background: white;
   color: #333;
+  font-family: 'Poppins', sans-serif;
 }
 
 .form-input:focus {
@@ -1180,16 +907,18 @@ export default {
 .form-textarea {
   resize: vertical;
   min-height: 80px;
+  padding-left: 3rem;
   padding-right: 1rem;
 }
 
 .input-icon {
   position: absolute;
-  right: 1rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 1.25rem;
   pointer-events: none;
+  z-index: 1;
 }
 
 .form-textarea + .input-icon {
@@ -1778,15 +1507,6 @@ export default {
 @media (max-width: 480px) {
   .header-title {
     font-size: 1.75rem;
-  }
-
-  .avatar-container {
-    width: 100px;
-    height: 100px;
-  }
-
-  .avatar-initials {
-    font-size: 2rem;
   }
 }
 </style>

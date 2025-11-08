@@ -1220,9 +1220,6 @@ export default {
         // Generate order ID
         let orderId = 'ORDER-' + Date.now();
         
-        // Track payment attempt
-        this.trackPaymentAttempt(orderId, 'initiated');
-        
         // Prepare order data using composable
         const orderData = {
           id: orderId,
@@ -1287,9 +1284,7 @@ export default {
             console.log('GCash API response:', gcashResult);
             
             if (gcashResult && gcashResult.data && gcashResult.data.attributes && gcashResult.data.attributes.redirect) {
-              // Track successful initiation
               paymentReference = gcashResult.data.id;
-              this.trackPaymentAttempt(orderId, 'redirected', 'gcash');
               // Store pending order before redirect
               this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to GCash checkout
@@ -1301,7 +1296,6 @@ export default {
             }
           } catch (error) {
             console.error('❌ GCash payment error:', error);
-            this.trackPaymentAttempt(orderId, 'failed', 'gcash', error.message);
             alert('Failed to process GCash payment:\n' + error.message + '\n\nPlease try again or select a different payment method.');
             this.isProcessing = false;
             return;
@@ -1314,9 +1308,7 @@ export default {
             console.log('PayMaya API response:', paymayaResult);
             
             if (paymayaResult && paymayaResult.data && paymayaResult.data.attributes && paymayaResult.data.attributes.redirect) {
-              // Track successful initiation
               paymentReference = paymayaResult.data.id;
-              this.trackPaymentAttempt(orderId, 'redirected', 'paymaya');
               // Store pending order before redirect
               this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to PayMaya checkout
@@ -1328,7 +1320,6 @@ export default {
             }
           } catch (error) {
             console.error('❌ PayMaya payment error:', error);
-            this.trackPaymentAttempt(orderId, 'failed', 'paymaya', error.message);
             alert('Failed to process PayMaya payment:\n' + error.message + '\n\nPlease try again or select a different payment method.');
             this.isProcessing = false;
             return;
@@ -1341,9 +1332,7 @@ export default {
             console.log('Card API response:', cardResult);
             
             if (cardResult && cardResult.data && cardResult.data.attributes && cardResult.data.attributes.redirect) {
-              // Track successful initiation
               paymentReference = cardResult.data.id;
-              this.trackPaymentAttempt(orderId, 'redirected', 'card');
               // Store pending order before redirect
               this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to card payment checkout
@@ -1355,7 +1344,6 @@ export default {
             }
           } catch (error) {
             console.error('❌ Card payment error:', error);
-            this.trackPaymentAttempt(orderId, 'failed', 'card', error.message);
             alert('Failed to process card payment:\n' + error.message + '\n\nPlease try again or select a different payment method.');
             this.isProcessing = false;
             return;
@@ -1368,9 +1356,7 @@ export default {
             console.log('GrabPay API response:', grabpayResult);
             
             if (grabpayResult && grabpayResult.data && grabpayResult.data.attributes && grabpayResult.data.attributes.redirect) {
-              // Track successful initiation
               paymentReference = grabpayResult.data.id;
-              this.trackPaymentAttempt(orderId, 'redirected', 'grabpay');
               // Store pending order before redirect
               this.storePendingOrder(orderId, this.cartItems, this.finalTotal, paymentReference, paymentStatus);
               // Redirect to GrabPay QR checkout
@@ -1382,7 +1368,6 @@ export default {
             }
           } catch (error) {
             console.error('❌ GrabPay payment error:', error);
-            this.trackPaymentAttempt(orderId, 'failed', 'grabpay', error.message);
             alert('Failed to process GrabPay payment:\n' + error.message + '\n\nPlease try again or select a different payment method.');
             this.isProcessing = false;
             return;
@@ -1616,9 +1601,6 @@ export default {
               
               if (CART_DEBUG) console.log('[Cart] Order marked confirmed');
               
-              // Track successful payment
-              this.trackPaymentAttempt(orderId, 'succeeded', orderData.paymentMethod);
-              
               // Load user profile first
               if (CART_DEBUG) console.log('[Cart] Loading user profile...');
               this.loadUserProfile().then(async () => {
@@ -1739,8 +1721,6 @@ export default {
             } else {
               // Payment failed or cancelled
               if (CART_DEBUG) console.log('[Cart] Payment failed/cancelled');
-              // Track failed/cancelled payment
-              this.trackPaymentAttempt(orderId, 'cancelled', orderData.paymentMethod, 'User cancelled payment');
               
               alert('Payment was not completed. Your order was not placed. Your items have been restored to the cart.');
               
@@ -1945,38 +1925,6 @@ export default {
       }
     },
     
-    // Payment history tracking
-    trackPaymentAttempt(orderId, status, method = null, error = null) {
-      try {
-        const paymentHistory = JSON.parse(localStorage.getItem('ramyeon_payment_history') || '[]');
-        
-        const attempt = {
-          orderId: orderId,
-          method: method || this.paymentMethod,
-          status: status, // 'initiated', 'redirected', 'succeeded', 'failed', 'cancelled'
-          amount: this.finalTotal, // Use final total with discount
-          promotionApplied: this.appliedPromotion ? this.appliedPromotion.promotion_id : null,
-          discountAmount: this.promotionDiscount,
-          timestamp: new Date().toISOString(),
-          error: error,
-          userId: this.userProfile?.id || 'guest'
-        };
-        
-        paymentHistory.push(attempt);
-        
-        // Keep only last 100 payment attempts
-        if (paymentHistory.length > 100) {
-          paymentHistory.shift();
-        }
-        
-        localStorage.setItem('ramyeon_payment_history', JSON.stringify(paymentHistory));
-        console.log('Payment attempt tracked:', attempt);
-      } catch (error) {
-        console.error('Error tracking payment attempt:', error);
-      }
-    },
-    
-    
     // Setup payment diagnostics helper
     setupPaymentDiagnostics() {
       // Expose diagnostics helper in console
@@ -2001,12 +1949,6 @@ export default {
           }
         },
         
-        viewHistory: () => {
-          const history = JSON.parse(localStorage.getItem('ramyeon_payment_history') || '[]');
-          console.log('📊 Payment History:', history);
-          return history;
-        },
-        
         viewPendingOrder: () => {
           const pending = localStorage.getItem('ramyeon_pending_order');
           if (pending) {
@@ -2016,17 +1958,10 @@ export default {
           }
         },
         
-        clearHistory: () => {
-          localStorage.removeItem('ramyeon_payment_history');
-          console.log('✅ Payment history cleared');
-        },
-        
         help: () => {
           console.log('🛠️ Ramyeon Payment Diagnostics:');
           console.log('  ramyeonPaymentDiagnostics.checkEnv() - Check PayMongo configuration');
-          console.log('  ramyeonPaymentDiagnostics.viewHistory() - View payment history');
           console.log('  ramyeonPaymentDiagnostics.viewPendingOrder() - View pending order');
-          console.log('  ramyeonPaymentDiagnostics.clearHistory() - Clear payment history');
           console.log('  ramyeonPaymentDiagnostics.help() - Show this help');
         },
         

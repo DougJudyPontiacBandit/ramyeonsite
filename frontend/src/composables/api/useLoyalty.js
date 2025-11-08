@@ -73,11 +73,9 @@ export function useLoyalty() {
   /**
    * Get customer loyalty points history
    * Note: History endpoint doesn't exist in backend
-   * @param {Object} filters - Filter options
    * @returns {Promise<Object>} History result
    */
-  // eslint-disable-next-line no-unused-vars
-  const getLoyaltyHistory = async (filters = {}) => {
+  const getLoyaltyHistory = async () => {
     try {
       isLoading.value = true
       error.value = null

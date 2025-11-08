@@ -391,6 +391,15 @@
   align-items: center;
   margin-bottom: 30px;
   padding: 0 10px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
 }
 
 .section-title {
@@ -718,16 +727,6 @@
   box-shadow: 0 12px 35px rgba(76, 175, 80, 0.4);
 }
 
-.payment-history-btn {
-  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-  color: white;
-  box-shadow: 0 8px 25px rgba(33, 150, 243, 0.3);
-}
-
-.payment-history-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(33, 150, 243, 0.4);
-}
 
 /* Dark Mode Styles */
 .dark-mode .profile-container {
