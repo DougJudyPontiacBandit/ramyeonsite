@@ -96,7 +96,8 @@ export default {
       statusHistory: [],
       isRefreshing: false,
       refreshTimer: null,
-      isMounted: false
+      isMounted: false,
+      orderNotFound: false // Track if order doesn't exist in backend
     };
   },
   computed: {
@@ -225,6 +226,12 @@ export default {
       // Don't fetch if component is unmounted
       if (!this.isMounted) return;
       
+      // Validate orderId before fetching
+      if (!this.orderId || this.orderId === 'undefined' || this.orderId === 'null') {
+        console.warn('⚠️ Invalid orderId, skipping status fetch:', this.orderId);
+        return;
+      }
+      
       try {
         const result = await ordersAPI.getStatus(this.orderId);
         
@@ -242,10 +249,29 @@ export default {
             statusInfo: result.data.status_info
           });
         } else if (result.error) {
-          console.warn('Failed to fetch order status:', result.error);
+          // If order not found, disable auto-refresh to prevent repeated 404s
+          if (result.error === 'Order not found') {
+            this.orderNotFound = true;
+            this.clearAutoRefresh(); // Stop trying to refresh
+            return;
+          }
+          // Only log if it's not a 404 (order not found is expected for old/localStorage orders)
+          if (result.error !== 'Not authenticated') {
+            console.warn('Failed to fetch order status:', result.error);
+          }
         }
       } catch (error) {
-        console.error('Error fetching order status:', error);
+        // Don't log 404 errors as they're expected for orders that don't exist in backend
+        if (error.response?.status === 404) {
+          // Order doesn't exist in backend (probably from localStorage)
+          this.orderNotFound = true;
+          this.clearAutoRefresh(); // Stop trying to refresh
+          return;
+        }
+        // Only log other errors
+        if (error.response?.status !== 404) {
+          console.error('Error fetching order status:', error);
+        }
       }
     },
 
@@ -269,10 +295,15 @@ export default {
       // Clear existing timer first
       this.clearAutoRefresh();
       
+      // Don't setup auto-refresh if order was not found (404)
+      if (this.orderNotFound) {
+        return;
+      }
+      
       // Only setup if interval is valid
       if (this.refreshInterval > 0) {
         this.refreshTimer = setInterval(() => {
-          if (this.isMounted) {
+          if (this.isMounted && !this.orderNotFound) {
             this.fetchStatus();
           }
         }, this.refreshInterval);

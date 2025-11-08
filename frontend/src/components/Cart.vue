@@ -475,18 +475,24 @@ export default {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
         await this.updateCartItemQuantity(item.product_id || item.id, item.quantity + 1);
+        // Recalculate promotion discount after quantity change
+        await this.recalculateExistingPromotions();
       }
     },
     async decreaseQuantity(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item && item.quantity > 1) {
         await this.updateCartItemQuantity(item.product_id || item.id, item.quantity - 1);
+        // Recalculate promotion discount after quantity change
+        await this.recalculateExistingPromotions();
       }
     },
     async removeItem(itemId) {
       const item = this.cartItems.find(item => item.id === itemId);
       if (item) {
         await this.removeFromCart(item.product_id || item.id);
+        // Recalculate promotion discount after item removal
+        await this.recalculateExistingPromotions();
       }
     },
     

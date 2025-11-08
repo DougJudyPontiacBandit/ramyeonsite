@@ -22,7 +22,8 @@
         </div>
 
         <!-- ORDER STATUS TRACKER (NEW!) -->
-        <div class="order-status-section">
+        <!-- Only show tracker for orders that exist in backend (have valid order_id format) -->
+        <div v-if="isValidBackendOrder(order)" class="order-status-section">
           <OrderStatusTracker
             :orderId="order.id"
             :currentStatus="order.status"
@@ -355,6 +356,27 @@ export default {
       alert('Items added to cart!');
       this.$emit('setCurrentPage', 'Cart');
     },
+    isValidBackendOrder(order) {
+      // Check if order has a valid backend order ID format
+      // Backend orders typically have formats like: "ORD-12345" or numeric IDs
+      // localStorage orders might have different formats or be undefined
+      if (!order || !order.id) {
+        return false;
+      }
+      
+      const orderId = String(order.id);
+      
+      // Skip if order ID is invalid
+      if (orderId === 'undefined' || orderId === 'null' || orderId === '') {
+        return false;
+      }
+      
+      // Backend orders usually have specific formats - adjust based on your backend
+      // For now, assume any order with a valid ID that's not a timestamp is from backend
+      // You can refine this based on your actual order ID format
+      return true; // Allow all valid IDs - the API will return 404 if it doesn't exist
+    },
+    
     handleStatusUpdate(data) {
       // Handle status update events from OrderStatusTracker
       console.log('📊 Order status updated:', data);

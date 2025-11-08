@@ -349,35 +349,37 @@ export const ordersAPI = {
   getStatus: async (orderId) => {
     try {
       // Validate orderId
-      if (!orderId) {
-        console.error('❌ Order ID is required');
-        return { success: false, error: 'Order ID is required' };
+      if (!orderId || orderId === 'undefined' || orderId === 'null') {
+        return { success: false, error: 'Invalid order ID' };
       }
 
       const token = localStorage.getItem('access_token');
       if (!token) {
-        console.log('⚠️ No token found for order status');
         return { success: false, error: 'Not authenticated' };
       }
 
       const response = await apiClient.get(`/online/orders/${orderId}/status/`);
-      console.log('✅ Order status fetched:', response.data);
       return { success: true, ...response.data };
     } catch (error) {
-      console.error('❌ Error fetching order status:', error);
-      
-      // Handle specific error cases
+      // Handle specific error cases silently for 404 (expected for old/localStorage orders)
       if (error.response) {
         if (error.response.status === 404) {
+          // Don't log 404 as error - it's expected for orders not in backend
           return { success: false, error: 'Order not found' };
         } else if (error.response.status === 403) {
           return { success: false, error: 'Unauthorized access to order' };
         } else if (error.response.status === 401) {
           return { success: false, error: 'Authentication required' };
         }
+        // Only log non-404 errors
+        if (error.response.status !== 404) {
+          console.error('❌ Error fetching order status:', error.response.status, error.response.data);
+        }
         return { success: false, error: error.response.data?.message || 'Failed to fetch order status' };
       }
       
+      // Network errors should be logged
+      console.error('❌ Network error fetching order status:', error.message);
       return { success: false, error: error.message || 'Network error' };
     }
   },
