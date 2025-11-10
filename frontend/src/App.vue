@@ -297,25 +297,31 @@ export default {
   },
   methods: {
     checkURLHash() {
-      // Parse the URL hash to determine which page to show
-      // This is CRITICAL for PayMongo redirects like #/cart?payment=success
-      console.log('🔍 Checking URL hash:', window.location.hash);
-      
-      const hash = window.location.hash;
-      
-      if (!hash || hash === '#/' || hash === '#') {
-        console.log('ℹ️ No hash or home hash, staying on Home');
+      const rawHash = window.location.hash || '';
+
+      if (!rawHash || rawHash === '#/' || rawHash === '#') {
         this.currentPage = 'Home';
         return;
       }
-      
-      // Extract the page name from hash
-      // Format can be: #/cart or #/cart?payment=success&order=...
-      let pageName = hash.replace('#/', '').split('?')[0];
-      
-      console.log('📄 Extracted page name from hash:', pageName);
-      
-      // Map hash names to component names
+
+      const trimmedHash = rawHash.startsWith('#') ? rawHash.slice(1) : rawHash;
+      const withoutLeadingSlash = trimmedHash.startsWith('/') ? trimmedHash.slice(1) : trimmedHash;
+
+      // Some providers append additional fragments (#/oauth?#/something). Only look at the first segment.
+      const [primarySegment] = withoutLeadingSlash.split('#', 1);
+      const [routeSegmentRaw, queryString = ''] = primarySegment.split('?');
+      const routeSegment = (routeSegmentRaw || '').toLowerCase();
+
+      if (!routeSegment) {
+        this.currentPage = 'Home';
+        return;
+      }
+
+      if (routeSegment === 'oauth') {
+        this.processOAuthCallback(queryString);
+        return;
+      }
+
       const pageMap = {
         'cart': 'Cart',
         'menu': 'Menu',
@@ -330,16 +336,67 @@ export default {
         'settings': 'Settings',
         'profile-settings': 'ProfileSettings'
       };
-      
-      const mappedPage = pageMap[pageName.toLowerCase()];
-      
-      if (mappedPage) {
-        console.log('✅ Setting page to:', mappedPage);
-        this.currentPage = mappedPage;
-      } else {
-        console.log('⚠️ Unknown page in hash, defaulting to Home');
+
+      const mappedPage = pageMap[routeSegment];
+      this.currentPage = mappedPage || 'Home';
+    },
+
+    processOAuthCallback(queryString) {
+      const params = new URLSearchParams(queryString || '');
+      const status = params.get('status');
+
+      if (!status) {
         this.currentPage = 'Home';
+        return;
       }
+
+      if (status === 'success') {
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const userId = params.get('user_id') || '';
+        const email = params.get('user_email') || '';
+        const fullName = params.get('user_name') || '';
+        const username = params.get('username') || (email ? email.split('@')[0] : 'guest');
+        const emailVerified = params.get('email_verified') === '1';
+
+        if (accessToken) {
+          localStorage.setItem('access_token', accessToken);
+        }
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken);
+        }
+
+        const firstName = fullName ? fullName.split(' ')[0] : username;
+        const lastName = fullName ? fullName.split(' ').slice(1).join(' ') : '';
+
+        const userSession = {
+          id: userId,
+          email,
+          username,
+          fullName: fullName || username,
+          firstName,
+          lastName,
+          phone: '',
+          points: 0,
+          deliveryAddress: {},
+          emailVerified,
+          authMode: 'oauth',
+          loginTime: new Date().toISOString()
+        };
+
+        localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
+        this.currentUser = userSession;
+        this.setCurrentPage('Profile');
+        window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}#/profile`);
+        return;
+      }
+
+      const message = params.get('message') || 'OAuth login failed. Please try again.';
+      alert(message);
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}#/login`);
+      this.currentPage = 'Login';
     },
     
     setCurrentPage(page) {

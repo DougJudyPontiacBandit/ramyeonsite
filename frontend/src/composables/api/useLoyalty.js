@@ -76,7 +76,7 @@ export function useLoyalty() {
    * @param {Object} filters - Filter options
    * @returns {Promise<Object>} History result
    */
-  const getLoyaltyHistory = async (filters = {}) => {
+  const getLoyaltyHistory = async () => {
     try {
       isLoading.value = true
       error.value = null

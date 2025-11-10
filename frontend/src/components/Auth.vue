@@ -331,7 +331,7 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api';
+import { authAPI, apiBaseUrl } from '../services/api';
 
 export default {
   name: 'Auth',
@@ -534,11 +534,50 @@ export default {
     },
     
     socialLogin(provider) {
-      alert(`${provider} login will be implemented soon!`);
+      this.startSocialAuth(provider, 'login');
     },
-    
+
     socialSignUp(provider) {
-      alert(`${provider} signup will be implemented soon!`);
+      this.startSocialAuth(provider, 'signup');
+    },
+
+    startSocialAuth(provider, mode) {
+      if (this.isLoading) {
+        return;
+      }
+
+      const supportedProviders = ['google', 'facebook'];
+      if (!supportedProviders.includes(provider)) {
+        const message = `${provider} login is not supported yet.`;
+        if (mode === 'signup') {
+          this.signupError = message;
+        } else {
+          this.loginError = message;
+        }
+        return;
+      }
+
+      try {
+        this.isLoading = true;
+        const redirectUri = `${window.location.origin}/#/oauth`;
+        const baseUrl = (apiBaseUrl || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+          throw new Error('Missing API base URL configuration.');
+        }
+
+        const authorizeUrl = `${baseUrl}/auth/oauth/${provider}/authorize/?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        window.location.href = authorizeUrl;
+      } catch (error) {
+        console.error('OAuth redirect error:', error);
+        const message = 'Failed to start social sign-in. Please try again later.';
+        if (mode === 'signup') {
+          this.signupError = message;
+        } else {
+          this.loginError = message;
+        }
+        this.isLoading = false;
+      }
     }
   },
   

@@ -43,6 +43,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+export const apiBaseUrl = API_BASE_URL;
 
 // Add token to requests if available
 apiClient.interceptors.request.use(
