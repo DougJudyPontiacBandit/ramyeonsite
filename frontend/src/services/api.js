@@ -43,6 +43,7 @@ const apiClient = axios.create({
     'Content-Type': 'application/json',
   },
 });
+export const apiBaseUrl = API_BASE_URL;
 
 // Add token to requests if available
 apiClient.interceptors.request.use(
@@ -82,15 +83,19 @@ export const authAPI = {
       const { token, access_token, refresh_token } = response.data || {};
       if (token || access_token) {
         localStorage.setItem('access_token', token || access_token);
+  register: async (payload) => {
+    try {
+      const response = await apiClient.post('/auth/customer/register/', payload);
+      const { access_token, refresh_token } = response.data || {};
+      if (access_token) {
+        localStorage.setItem('access_token', access_token);
       }
       if (refresh_token) {
         localStorage.setItem('refresh_token', refresh_token);
       }
-      
       return response.data;
     } catch (error) {
-      console.error('Registration API Error:', error);
-      throw error.response?.data || { message: 'Registration failed. Please try again.' };
+      throw error.response?.data || { message: 'Registration failed' };
     }
   },
 

@@ -331,7 +331,7 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api';
+import { authAPI, apiBaseUrl } from '../services/api';
 
 export default {
   name: 'Auth',
@@ -487,36 +487,49 @@ export default {
       this.isLoading = true;
       
       try {
+        // Ensure any existing session is cleared before creating a new account
+        await authAPI.logout();
+
         const response = await authAPI.register({
-          firstName: this.signupForm.firstName.trim(),
-          lastName: this.signupForm.lastName.trim(),
+          first_name: this.signupForm.firstName.trim(),
+          last_name: this.signupForm.lastName.trim(),
           email: this.signupForm.email.toLowerCase().trim(),
           phone: this.signupForm.phone,
           password: this.signupForm.password,
+          delivery_address: {},
         });
-        
-        const customer = response.customer;
+
+        const customer = response.customer || response.user || {};
+        const responseFirstName = customer.first_name || customer.firstName;
+        const responseLastName = customer.last_name || customer.lastName;
+        const responseFullName = customer.full_name || customer.fullName || '';
+
+        const derivedFirstName = responseFirstName || responseFullName.split(' ')[0] || this.signupForm.firstName.trim();
+        const derivedLastName = responseLastName || responseFullName.split(' ').slice(1).join(' ') || this.signupForm.lastName.trim();
+
         const userSession = {
           id: customer._id || customer.id,
           email: customer.email,
           username: customer.username,
-          fullName: customer.full_name,
-          firstName: customer.full_name ? customer.full_name.split(' ')[0] : '',
-          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : '',
+          fullName: responseFullName || `${derivedFirstName} ${derivedLastName}`.trim(),
+          firstName: derivedFirstName,
+          lastName: derivedLastName,
           phone: customer.phone || '',
           points: customer.loyalty_points || 0,
           deliveryAddress: customer.delivery_address || {},
-          loginTime: new Date().toISOString()
+          loginTime: new Date().toISOString(),
+          emailVerified: customer.email_verified,
+          authMode: customer.auth_mode || 'password',
         };
-        
+
         localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
-        
-        this.signupSuccess = response.message || 'Account created successfully! Welcome to Ramyeon Corner!';
-        
+
+        this.signupSuccess = response.message || 'Account created successfully! Please verify your email.';
+
         setTimeout(() => {
           this.$emit('signUpSuccess', userSession);
         }, 1500);
-        
+         
       } catch (error) {
         console.error('SignUp error:', error);
         this.signupError = error.error || error.detail || error.message || 'An error occurred during registration. Please try again.';
@@ -534,11 +547,50 @@ export default {
     },
     
     socialLogin(provider) {
-      alert(`${provider} login will be implemented soon!`);
+      this.startSocialAuth(provider, 'login');
     },
-    
+
     socialSignUp(provider) {
-      alert(`${provider} signup will be implemented soon!`);
+      this.startSocialAuth(provider, 'signup');
+    },
+
+    startSocialAuth(provider, mode) {
+      if (this.isLoading) {
+        return;
+      }
+
+      const supportedProviders = ['google', 'facebook'];
+      if (!supportedProviders.includes(provider)) {
+        const message = `${provider} login is not supported yet.`;
+        if (mode === 'signup') {
+          this.signupError = message;
+        } else {
+          this.loginError = message;
+        }
+        return;
+      }
+
+      try {
+        this.isLoading = true;
+        const redirectUri = `${window.location.origin}/#/oauth`;
+        const baseUrl = (apiBaseUrl || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+          throw new Error('Missing API base URL configuration.');
+        }
+
+        const authorizeUrl = `${baseUrl}/auth/oauth/${provider}/authorize/?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        window.location.href = authorizeUrl;
+      } catch (error) {
+        console.error('OAuth redirect error:', error);
+        const message = 'Failed to start social sign-in. Please try again later.';
+        if (mode === 'signup') {
+          this.signupError = message;
+        } else {
+          this.loginError = message;
+        }
+        this.isLoading = false;
+      }
     }
   },
   

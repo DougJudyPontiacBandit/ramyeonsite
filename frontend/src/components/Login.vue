@@ -156,7 +156,7 @@
 </template>
 
 <script>
-import { authAPI } from '../services/api';
+import { authAPI, apiBaseUrl } from '../services/api';
 
 export default {
   name: 'Login',
@@ -278,41 +278,32 @@ export default {
     },
     
     socialLogin(provider) {
-      if (this.isLoading) return;
-      
-      this.isLoading = true;
-      
-      // Simulate social login
-      setTimeout(() => {
-        const mockUser = {
-          id: Date.now(),
-          email: `user@${provider}.com`,
-          firstName: 'Social',
-          lastName: 'User',
-          phone: '+1234567890',
-          points: 3280,
-          vouchers: [
-            {
-              id: 1,
-              title: 'Shin Ramyun',
-              subtitle: 'Spicy Noodle',
-              discount: '20% OFF',
-              code: 'SHIN20',
-              qrCode: 'SHIN20-QR-' + Date.now()
-            }
-          ],
-          loginTime: new Date().toISOString()
-        };
-        
-        localStorage.setItem('ramyeon_user_session', JSON.stringify(mockUser));
-        this.successMessage = `${provider} login successful! Redirecting...`;
-        
-        setTimeout(() => {
-          this.$emit('loginSuccess', mockUser);
-        }, 1000);
-        
+      if (this.isLoading) {
+        return;
+      }
+
+      const supportedProviders = ['google', 'facebook'];
+      if (!supportedProviders.includes(provider)) {
+        this.errorMessage = `${provider} login is not supported yet.`;
+        return;
+      }
+
+      try {
+        this.isLoading = true;
+        const redirectUri = `${window.location.origin}/#/oauth`;
+        const baseUrl = (apiBaseUrl || '').replace(/\/$/, '');
+
+        if (!baseUrl) {
+          throw new Error('Missing API base URL configuration.');
+        }
+
+        const authorizeUrl = `${baseUrl}/auth/oauth/${provider}/authorize/?redirect_uri=${encodeURIComponent(redirectUri)}`;
+        window.location.href = authorizeUrl;
+      } catch (error) {
+        console.error('OAuth redirect error:', error);
+        this.errorMessage = 'Failed to start social login. Please try again later.';
         this.isLoading = false;
-      }, 1500);
+      }
     }
   },
   
