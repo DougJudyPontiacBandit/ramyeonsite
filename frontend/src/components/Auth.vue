@@ -487,6 +487,9 @@ export default {
       this.isLoading = true;
       
       try {
+        // Ensure any existing session is cleared before creating a new account
+        await authAPI.logout();
+
         const response = await authAPI.register({
           first_name: this.signupForm.firstName.trim(),
           last_name: this.signupForm.lastName.trim(),
@@ -497,13 +500,20 @@ export default {
         });
 
         const customer = response.customer || response.user || {};
+        const responseFirstName = customer.first_name || customer.firstName;
+        const responseLastName = customer.last_name || customer.lastName;
+        const responseFullName = customer.full_name || customer.fullName || '';
+
+        const derivedFirstName = responseFirstName || responseFullName.split(' ')[0] || this.signupForm.firstName.trim();
+        const derivedLastName = responseLastName || responseFullName.split(' ').slice(1).join(' ') || this.signupForm.lastName.trim();
+
         const userSession = {
           id: customer._id || customer.id,
           email: customer.email,
           username: customer.username,
-          fullName: customer.full_name,
-          firstName: customer.full_name ? customer.full_name.split(' ')[0] : this.signupForm.firstName.trim(),
-          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : this.signupForm.lastName.trim(),
+          fullName: responseFullName || `${derivedFirstName} ${derivedLastName}`.trim(),
+          firstName: derivedFirstName,
+          lastName: derivedLastName,
           phone: customer.phone || '',
           points: customer.loyalty_points || 0,
           deliveryAddress: customer.delivery_address || {},
