@@ -488,35 +488,38 @@ export default {
       
       try {
         const response = await authAPI.register({
-          firstName: this.signupForm.firstName.trim(),
-          lastName: this.signupForm.lastName.trim(),
+          first_name: this.signupForm.firstName.trim(),
+          last_name: this.signupForm.lastName.trim(),
           email: this.signupForm.email.toLowerCase().trim(),
           phone: this.signupForm.phone,
           password: this.signupForm.password,
+          delivery_address: {},
         });
-        
-        const customer = response.customer;
+
+        const customer = response.customer || response.user || {};
         const userSession = {
           id: customer._id || customer.id,
           email: customer.email,
           username: customer.username,
           fullName: customer.full_name,
-          firstName: customer.full_name ? customer.full_name.split(' ')[0] : '',
-          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : '',
+          firstName: customer.full_name ? customer.full_name.split(' ')[0] : this.signupForm.firstName.trim(),
+          lastName: customer.full_name ? customer.full_name.split(' ').slice(1).join(' ') : this.signupForm.lastName.trim(),
           phone: customer.phone || '',
           points: customer.loyalty_points || 0,
           deliveryAddress: customer.delivery_address || {},
-          loginTime: new Date().toISOString()
+          loginTime: new Date().toISOString(),
+          emailVerified: customer.email_verified,
+          authMode: customer.auth_mode || 'password',
         };
-        
+
         localStorage.setItem('ramyeon_user_session', JSON.stringify(userSession));
-        
-        this.signupSuccess = response.message || 'Account created successfully! Welcome to Ramyeon Corner!';
-        
+
+        this.signupSuccess = response.message || 'Account created successfully! Please verify your email.';
+
         setTimeout(() => {
           this.$emit('signUpSuccess', userSession);
         }, 1500);
-        
+         
       } catch (error) {
         console.error('SignUp error:', error);
         this.signupError = error.error || error.detail || error.message || 'An error occurred during registration. Please try again.';
