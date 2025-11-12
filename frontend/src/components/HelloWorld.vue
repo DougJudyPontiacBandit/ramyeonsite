@@ -244,14 +244,17 @@ export default {
         alert('Please select a pickup time');
         return;
       }
-      
+
       const message = this.deliveryType === 'Delivery' 
         ? `Order placed for delivery to ${this.address}`
         : `Order placed for pickup at ${this.pickupTime}`;
-      
+        
       alert(message);
       this.address = '';
       this.pickupTime = '';
+
+      // ✅ Tell parent we want to go to login, but from an order action
+      this.$emit('setCurrentPage', 'Login', { from: 'OrderNow' });
     }
   }
 }
