@@ -6,6 +6,7 @@
         @loginSuccess="handleAuthSuccess"
         @signUpSuccess="handleAuthSuccess"
         @backToHome="setCurrentPage('Home')"
+        @switchToSignUp="setCurrentPage('SignUp')" 
       />
     </template>
 
@@ -127,9 +128,9 @@
                     <polyline points="22,6 12,13 2,6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
                 </div>
-                <h3>Get Exclusive Deals in your inbox</h3>
+                <h3>Sign Up and get exclusive deals!</h3>
               </div>
-              <div class="newsletter-form" :class="{ 'success': subscriptionSuccess, 'error': subscriptionError }">
+              <!----><div class="newsletter-form" :class="{ 'success': subscriptionSuccess, 'error': subscriptionError }">
                 <div class="input-container">
                   <input 
                     type="email" 
@@ -180,7 +181,7 @@
                   <li><a href="#">Terms and conditions</a></li>
                   <li><a href="#">Privacy</a></li>
                   <li><a href="#">Cookies</a></li>
-                  <li><a href="#">IDK</a></li>
+            
                 </ul>
               </div>
             </div>

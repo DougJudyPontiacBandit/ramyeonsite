@@ -84,9 +84,9 @@
             <label for="remember">Remember me</label>
           </div>
           
-          <div class="forgot-password">
+      <!--   <div class="forgot-password">
             <a href="#" @click.prevent="handleForgotPassword">Forgot Password?</a>
-          </div>
+          </div>-->   
         </div>
         
         <button type="submit" class="auth-button" :disabled="isLoading">
